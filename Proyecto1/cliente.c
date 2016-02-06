@@ -79,21 +79,7 @@ int main(int argc, char *argv[]){
 				}
 			}
 		}
-	}else if(argc==3){
-		if(strcmp(argv[1],"-p")==0){
-			//Colocamos el nombre del pipe de comunicacion dado por el usuario
-			nam_given_size = strlen(argv[2]);
-			pipe_com = (char *)malloc(tmp_part+nam_given_size+1);
-			memcpy(pipe_com,"/tmp/",tmp_part);
-			memcpy(pipe_com + tmp_part,argv[2],nam_given_size+1);
-			//Asignamos al usuario el nombre proporcionado
-			usuario = (char *)malloc(strlen(argv[3])+1);
-			memcpy(usuario,argv[3],strlen(argv[3]));
-		}else{
-			fprintf(stderr, "Uso esperado: %s [-p pipe] [usuario]\n", argv[0]);
-			return 1;
-		}
-	}}
+	}
 
 	/*int fd;
 	char * myfifo="/tmp/myfifio";
