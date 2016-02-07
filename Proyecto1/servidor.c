@@ -6,11 +6,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
-
 int main(int argc, char *argv[]){ 
 	char * pipe_com;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
+	size_t tmp_r=strlen("/tmp/r");
+	size_t tmp_s=strlen("/tmp/s");
+	char * pipe_send;
+	char * pipe_rec;
 
 	if(argc==1){
 		pipe_com = "/tmp/servidor1210761-1210796";
@@ -26,7 +29,7 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 
-	mkfifo(pipe_com, O_NOMBLOCK);
+	mkfifo(pipe_com, O_NONBLOCK);
 
 	/*int fd;
 	char * myfifo="/tmp/myfifio";
