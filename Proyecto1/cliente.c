@@ -112,7 +112,7 @@ int main(int argc, char *argv[]){
 			}
 		}
 	}
-
+	conectarServidor(crearPipe_r(usuario),crearPipe_w(usuario),pipe_com);
 	/*int fd;
 	char * myfifo="/tmp/myfifio";
 	char buf[MAX_BUF];
