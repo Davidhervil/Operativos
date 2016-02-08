@@ -33,12 +33,16 @@ char* crearPipe_r(char* usuario){
     fd_r = open(lectura,O_RDONLY);
     return lectura;
 }
-void conectarServidor(char* pipe_r,char* pipe_w,char* pipe_serv){
+int conectarServidor(char* pipe_r,char* pipe_w,char* pipe_serv){
 	int fd;
-	fd = open(pipe_serv, O_WRONLY);
-    write(fd, pipe_r, sizeof(pipe_r));
-    write(fd, pipe_w, sizeof(pipe_w));	
-    close(fd);
+	char* pasar;
+	char* concatenar;
+	concatenar = concat(pipe_r,"::");
+	pasar = concat(concatenar,pipe_w);
+	fd = open(pipe_serv, O_WRONLY |O_NONBLOCK);
+	write(fd, pasar, sizeof(pasar));
+    	close(fd);
+    	return(0);
 }
 
 int main(int argc, char *argv[]){
