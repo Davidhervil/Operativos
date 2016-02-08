@@ -8,6 +8,38 @@
 #include <string.h>
 
 #define TAM 2048
+char* concat(char *s1, char *s2){
+	char *result;
+    result = (char*)malloc(strlen(s1)+strlen(s2)+1);
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
+char* crearPipe_w(char* usuario){
+	int fd_w;
+	char* dir_w = "/tmp/w_";
+    char* escritura = concat(dir_w,usuario);
+    mkfifo(escritura, 0666);
+    fd_w = open(escritura, O_WRONLY);
+    return escritura;
+}
+
+char* crearPipe_r(char* usuario){
+	int fd_r;
+	char* dir_l = "/tmp/r_";
+	char* lectura = concat(dir_l,usuario);
+    mkfifo(lectura, 0666);
+    fd_r = open(lectura,O_RDONLY);
+    return lectura;
+}
+void conectarServidor(char* pipe_r,char* pipe_w,char* pipe_serv){
+	int fd;
+	fd = open(pipe_serv, O_WRONLY);
+    write(fd, pipe_r, sizeof(pipe_r));
+    write(fd, pipe_w, sizeof(pipe_w));	
+    close(fd);
+}
 
 int main(int argc, char *argv[]){
 	size_t tmp_part=strlen("/tmp/");
