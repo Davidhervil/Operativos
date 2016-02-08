@@ -6,14 +6,23 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+
+#define TAM 2048
 int main(int argc, char *argv[]){ 
 	char * pipe_com;
+	char * com_buff[TAM];
+	int fd_lectura[20],fd_escritura[20];
+	int com_fd,comm_success;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
-	size_t tmp_r=strlen("/tmp/r");
-	size_t tmp_s=strlen("/tmp/s");
-	char * pipe_send;
-	char * pipe_rec;
+
+	fd_set readfds,writefds,comm,comm_cpy;
+	struct timeval tv;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	FD_ZERO(&comm);
+	FD_ZERO(&readfds);
+	FD_ZERO(&writefds);
 
 	if(argc==1){
 		pipe_com = "/tmp/servidor1210761-1210796";
@@ -29,7 +38,22 @@ int main(int argc, char *argv[]){
 		return 1;
 	}
 
-	mkfifo(pipe_com, O_NONBLOCK);
+	mkfifo(pipe_com,0777);
+	com_fd = open(pipe_com,O_RDONLY | O_NONBLOCK);
+	FD_SET(com_fd,comm);
+	while(1){
+		//SELECT
+		//Chequear pipe de comunicacion
+		comm_cpy = comm;
+		comm_success = select(2,&comm_cpy,NULL,NULL, &tv);
+		if(comm_success == -1){
+			perror("Communication Error");
+		}else if(comm_success){
+			read(com_fd,com_buff,TAM);
+			obtener_usuario(com_buff);
+			obtener_pipes(com_buff,pipe_r,pipe_w)
+		}
+	}
 
 	/*int fd;
 	char * myfifo="/tmp/myfifio";
@@ -41,4 +65,3 @@ int main(int argc, char *argv[]){
 	unlink(myfifo);*/
 	return 0;
 }
-OH SI, PUEDO MODIFICAR
