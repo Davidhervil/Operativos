@@ -41,3 +41,4 @@ int main(int argc, char *argv[]){
 	unlink(myfifo);*/
 	return 0;
 }
+OH SI, PUEDO MODIFICAR
