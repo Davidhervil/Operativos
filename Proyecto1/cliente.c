@@ -9,6 +9,8 @@
 #include <ncurses.h>
 #include <stdlib.h>
 #include "chat.h"
+#include <time.h>
+
 
 #define ALTO 5 // Alto de la ventana 2
 #define LINES_MIN 10 // Alto mínimo que debe tener el terminal
@@ -44,10 +46,15 @@ char* crearPipe_r(char* usuario){
 }
 int conectarServidor(char* usuario,char* pipe_serv){
 	int fd;
-	fd = open(pipe_serv, O_WRONLY |O_NONBLOCK);
+	if(fd = open(pipe_serv, O_WRONLY |O_NONBLOCK)){
+		fprintf(stderr, "Error al abrir pipe de comunicacion");
+		return 0;
+	}	
     write(fd, usuario, sizeof(usuario));
-    close(fd);
-    return(0);
+    printf("%s se ha conectado a: %s\n", usuario, pipe_serv);
+	sleep(5);
+    //close(fd);
+    return 1;
 }
 
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
@@ -61,7 +68,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		//Acciones por defecto
 		usuario=(char *)malloc(dflt_usr_len+1);		// Pedimos espacio en memoria para el nombre del usuario por defecto y el caracter nulo
 		usuario=getenv("USER");						// Asignamos el nombre de usuario
-		pipe_com="/tmp/servidor";					// asignamos el nombre del pipe por defecto segun lo especificado.
+		pipe_com="/tmp/servidor1210761-1210796";					// asignamos el nombre del pipe por defecto segun lo especificado.
 
 	}else{
 		if(argc==2){
@@ -74,6 +81,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 				//Asignamos al usuario el nombre proporcionado
 				usuario = (char *)malloc(strlen(argv[1])+1);
 				memcpy(usuario,argv[1],strlen(argv[1]));
+				usuario[strlen(usuario)-1] = '\0';
 
 				//Pipe predeterminado
 				pipe_com="/tmp/servidor1210761-1210796";
@@ -86,6 +94,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 					pipe_com = (char *)malloc(tmp_part+nam_given_size+1);
 					memcpy(pipe_com,"/tmp/",tmp_part);
 					memcpy(pipe_com + tmp_part,argv[2],nam_given_size+1); /////////////////
+					pipe_com[strlen(pipe_com)-1] = '\0';
 
 					//Usuario predeterminado
 					usuario=(char *)malloc(dflt_usr_len+1);
@@ -108,10 +117,11 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 						pipe_com = (char *)malloc(tmp_part+nam_given_size+1);
 						memcpy(pipe_com,"/tmp/",tmp_part);
 						memcpy(pipe_com + tmp_part,argv[2],nam_given_size+1);
-						
+						pipe_com[strlen(pipe_com)-1] = '\0';
+
 						//Asignamos al usuario el nombre proporcionado
 						usuario = (char *)malloc(strlen(argv[3])+1);
-						memcpy(usuario,argv[1],strlen(argv[3]));
+						memcpy(usuario,argv[3],strlen(argv[3]));
 					}else{
 						//Mensaje de error
 						fprintf(stderr, "Uso esperado: %s [-p pipe] [usuario]\n", argv[0]);
@@ -121,7 +131,13 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 			}
 		}
 	}
-	conectarServidor(usuario,pipe_com);
+	if(conectarServidor(usuario,pipe_com)){
+	printf("Conectado a: %s\n",pipe_com);
+	}else{
+		printf("Error al conectarServidor\n");
+		return -1;
+	}
+	sleep(5);
 	/////////////////////////////////////////////////////////////////////
 	    
 	    initscr(); // Inicializar la biblioteca ncurses
