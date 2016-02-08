@@ -9,6 +9,8 @@
 #include <ncurses.h>
 #include <stdlib.h>
 #include "chat.h"
+#include <time.h>
+
 
 #define ALTO 5 // Alto de la ventana 2
 #define LINES_MIN 10 // Alto mínimo que debe tener el terminal
@@ -17,6 +19,12 @@
 #define TAM 2048 // Tamaño de buffer
 
 WINDOW *ventana1, *ventana2;
+void printca(char *t) {
+   if (*t == '\0')
+      return;
+   printf("%c", *t);
+   printca(++t);
+}
 
 /* Mueve el cursor al punto de inserción actual de la ventana 2. */
 char* concat(char *s1, char *s2){
@@ -45,7 +53,11 @@ char* crearPipe_r(char* usuario){
 int conectarServidor(char* usuario,char* pipe_serv){
 	int fd;
 	fd = open(pipe_serv, O_WRONLY |O_NONBLOCK);
-    write(fd, usuario, sizeof(usuario));
+    write(fd, usuario, sizeof(usuario)+1);
+    printca(usuario);
+    printf("se ha conectado a:");
+	printca(pipe_serv);
+	sleep(5);
     close(fd);
     return(0);
 }
@@ -61,7 +73,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		//Acciones por defecto
 		usuario=(char *)malloc(dflt_usr_len+1);		// Pedimos espacio en memoria para el nombre del usuario por defecto y el caracter nulo
 		usuario=getenv("USER");						// Asignamos el nombre de usuario
-		pipe_com="/tmp/servidor";					// asignamos el nombre del pipe por defecto segun lo especificado.
+		pipe_com="/tmp/servidor1210761-1210796\n";					// asignamos el nombre del pipe por defecto segun lo especificado.
 
 	}else{
 		if(argc==2){
@@ -122,6 +134,9 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		}
 	}
 	conectarServidor(usuario,pipe_com);
+	printf("Conectado a:");
+	printca(pipe_com);
+	sleep(5);
 	/////////////////////////////////////////////////////////////////////
 	    
 	    initscr(); // Inicializar la biblioteca ncurses
