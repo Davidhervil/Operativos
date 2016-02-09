@@ -11,6 +11,9 @@
 #define MAX_USR 20
 
 void obtener_usuario(char * buffer, char * usuario){
+	/*	Esta funcion guarda en la variable usuario el nombre del usuario recibido en el buffer
+		por el pipe de comunicacion
+	*/
 	int total,i=0;
 	while(buffer[i]!='\0'){
 		i++;
@@ -52,7 +55,11 @@ void obtener_pipe_escr(char * usr, char * pipew){
 	pipew[tmp_w_part+strlen(usr)]='\0';
 }
 
-int anhadir_usuario(char * conjunto[], char * usr){
+int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr, int fdsw){
+	/*	Esta funcion anhade a un usuario en el arreglo de usuarios y anhade los descriptores de
+		sus pipes asociaos a los arreglos fdsr y fdsw. La posicion del usuario
+		corresponde con las posiciones de sus descriptores asociados.
+	*/
 	int i=0;
 	while(conjunto[i]!=NULL){
 		i++;
@@ -60,20 +67,25 @@ int anhadir_usuario(char * conjunto[], char * usr){
 	if(i == MAX_USR){
 		return 0;
 	}else{
+		fdsr[i] = fdr;
+		fdsr[i] = fdw;
 		conjunto[i] = usr;
 		return 1;
 	}
 }
 int main(int argc, char *argv[]){ 
 	char * pipe_com;
-	char * usuarios[MAX_USR]={NULL};
 	char * usuario_aux;
 	char * pipe_r;
 	char * pipe_w;
 	char com_buff[TAM_BUFFER];
+	char * usuarios[MAX_USR]={NULL};
+	char * estados[MAX_USR]={NULL};
+	char * usuario_asociado[MAX_USR]={NULL};
 
-	int fd_lectura[20]={-1};
-	int fd_escritura[20]={-1};
+	int dafuq;
+	int fds_lectura[20]={-1};
+	int fds_escritura[20]={-1};
 	int com_fd,comm_success,fdread_aux,fdwrite_aux;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
@@ -98,21 +110,20 @@ int main(int argc, char *argv[]){
 
 	}else{
 		fprintf(stderr, "Uso esperado: %s [pipe]\n", argv[0]);
-		return 1;
+		return -1;
 	}
 	if(mkfifo(pipe_com,0666)<0){
 		fprintf(stderr,"NO SE PUDO CREAR pipe_com\n");
-		return 1;
+		return -1;
 	}else{
 		printf("Pipe de conexion creado\n");
 	}
 	if((com_fd = open(pipe_com,O_RDWR | O_NONBLOCK))<0){
 		fprintf(stderr, "Error al abrir pipe de comunicacion\n");
-		return 1;
+		return -1;
 	}
 	FD_SET(com_fd,&comm);
 	printf("Se abrio el pipe: %s y su descriptor es %d\n",pipe_com,com_fd);
-	int dafuq;
 	
 	while(1){
 		//printf("while true\n");
@@ -131,9 +142,18 @@ int main(int argc, char *argv[]){
 			obtener_usuario(com_buff,usuario_aux);
 			obtener_pipe_lect(usuario_aux,pipe_r);
 			obtener_pipe_escr(usuario_aux,pipe_w);
-			if((fdwrite_aux = open(pipe_w,)
-			if(!anhadir_usuario(usuarios,usuario)){
-				//enviar al usuario un mensaje de no poder agregar<
+			if((fdwrite_aux = open(pipe_w,O_WRONLY | O_NONBLOCK))<0){
+				fprintf(stderr, "Error al abrir pipe de escritura del usuario %s\n",usuario_aux);
+				return -1;
+			}
+			if((fdread_aux = open(pipe_r, O_RDONLY | O_NONBLOCK))<0){
+				fprintf(stderr, "Error al abrir pipe de lectura del usuario %s\n",usuario_aux);
+				return -1;
+			}
+			if(!anhadir_usuario(usuarios,usuario,fdread_aux,fdwrite_aux)){
+				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
+				close(fdwrite_aux);
+				close(fdread_aux);
 			}
 		}
 	}
