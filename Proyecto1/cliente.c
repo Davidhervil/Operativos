@@ -174,7 +174,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 
 	// los abrimos y los metemos en cada file descriptor
 
-	if((fd_w = open(pwrite, O_WRONLY|O_NONBLOCK))<0){
+	if((fd_w = open(pwrite, O_RDWR|O_NONBLOCK))<0){
 		printf("No se abrio %s\n",pwrite);
 		return 1;
 	}
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
         char buffer[TAM];
         wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
         aux = write(fd_w,buffer,strlen(buffer)+1);
-		wprintw(ventana1, concat(usuario,"'Escribiste al pipe: %d lineas' \n"), fd_w);
+		wprintw(ventana1, concat(usuario,"'Escribiste al pipe %d: %d letras' \n"), fd_w,aux-1);
 
         if (strcmp(buffer, "-salir") == 0) {
             break;
