@@ -31,24 +31,26 @@ char* concat(char *s1, char *s2){
 }
 
 //Crear pipe de wscritura.
-void crearPipe_w(char* usuario){
+char* crearPipe_w(char* usuario){
 	char* dir_w = "/tmp/w_";
     char* escritura = concat(dir_w,usuario);
     mkfifo(escritura, 0666);
+    return escritura;
 }
 
 //Crear pipe de lectura.
-void crearPipe_r(char* usuario){
+char* crearPipe_r(char* usuario){
 	char* dir_l = "/tmp/r_";
 	char* lectura = concat(dir_l,usuario);
     mkfifo(lectura, 0666);
+    return lectura;
 }
 
 //Conectarse al servidor (Enviar nombre del usuario por el pipe com)
 int conectarServidor(char * usuario,char * pipe_serv){
 	int fd;
-	crearPipe_w(usuario);
-	crearPipe_r(usuario);
+	printf("Se ha creado %s\n",crearPipe_w(usuario));
+	printf("Se ha creado %s\n",crearPipe_r(usuario));
 	if((fd = open(pipe_serv, O_WRONLY |O_NONBLOCK))<0){
 		fprintf(stderr, "Error al abrir pipe de comunicacion.\n");
 		return 0;
@@ -155,6 +157,10 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		}
 	}
 
+	pwrite = concat(dir_wr,usuario);	
+	pread = concat(dir_re,usuario);
+	unlink(pwrite);
+	unlink(pread);
 
 	if(conectarServidor(usuario,pipe_com)){
 	}else{
@@ -163,11 +169,14 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 	}
 
 	//Obtenemos la direccion de los pipes
-	pwrite = concat(dir_wr,usuario);	
-	pread = concat(dir_re,usuario);
+
 
 	// los abrimos y los metemos en cada file descriptor
-	fd_w = open(pwrite,O_WRONLY|O_NONBLOCK);
+
+	if((fd_w = open(pwrite,O_WRONLY |O_NONBLOCK))<0){
+		printf("No se abrio %s\n",pwrite);
+		return 1;
+	}
 	fd_r = open(pread,O_RDONLY|O_NONBLOCK);
 	FD_SET(fd_r,&comm);
 
@@ -196,6 +205,9 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     while(1) {
         char buffer[TAM];
         wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
+        aux = write(fd_w,buffer,strlen(buffer)+1);
+		wprintw(ventana1, concat(usuario,"'Escribiste al pipe: %d lineas' \n"), fd_w);
+
         if (strcmp(buffer, "-salir") == 0) {
             break;
         }
@@ -214,8 +226,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
         //Escribir al servidor
 
         //if(strlen(buffer)>0){
-			aux = (fd_w,buffer,strlen(buffer)+1);
-			wprintw(ventana1, concat(usuario,"'Escribiste al pipe: %d lineas' \n"), aux);
+
 
         //}
 
@@ -246,5 +257,6 @@ void limpiarVentana2() {
     wmove(ventana2, 1, 0);
     wrefresh(ventana2);
 }
+
 
 
