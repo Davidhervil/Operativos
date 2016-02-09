@@ -64,7 +64,7 @@ int conectarServidor(char * usuario,char * pipe_serv){
 }
 
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
-	int fd_w,fd_r;									// Filedescriptors de los dos pipes que se crean.
+	int fd_w,fd_r,aux;									// Filedescriptors de los dos pipes que se crean.
 	size_t tmp_part=strlen("/tmp/");				
 	size_t nam_given_size;							// Tamanio del nombre proporcionado
 	size_t dflt_usr_len=strlen(getenv("USER"));		// Tamanio del nombre de usuario por defecto
@@ -74,6 +74,16 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     char* pwrite;
     char* pread;
     char* dir_re = "/tmp/r_";
+	char com_buff[TAM];
+
+	int comm_success,fdread_aux,fdwrite_aux,leido;
+	fd_set readfds,writefds,comm,comm_cpy,readfds_cpy,writefds_cpy;
+	struct timeval tv;
+	tv.tv_sec = 1;
+	tv.tv_usec = 0;
+	FD_ZERO(&comm);
+	FD_ZERO(&readfds);
+	FD_ZERO(&writefds);
 
 
 	if(argc==1){									// Si solo se proporciona un argumento, entonces el pipe y el usuario se toman por defecto
@@ -158,7 +168,9 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 
 	// los abrimos y los metemos en cada file descriptor
 	fd_w = open(pwrite,O_WRONLY|O_NONBLOCK);
-	fd_r = open(pwrite,O_RDONLY|O_NONBLOCK);
+	fd_r = open(pread,O_RDONLY|O_NONBLOCK);
+	FD_SET(fd_r,&comm);
+
 
 	/////////////////////////////////////////////////////////////////////
 	    
@@ -188,11 +200,29 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
             break;
         }
 
+		comm_cpy = comm;
+		comm_success = select(fd_r+1,&comm_cpy,NULL,NULL, &tv);
+		if(comm_success == -1){
+			perror("Error de comunicacion");
+		
+		}else if(comm_success){
+			leido = read(fd_r,com_buff,TAM);
+			com_buff[leido]='\0';
+			wprintw(ventana1, concat(usuario,": %s\n"), com_buff);
+		}
+
         //Escribir al servidor
-        write(fd_w,buffer,strlen(buffer)+1);
 
+        //if(strlen(buffer)>0){
+			aux = (fd_w,buffer,strlen(buffer)+1);
+			wprintw(ventana1, concat(usuario,"'Escribiste al pipe: %d lineas' \n"), aux);
 
+        //}
+
+        //Escribir a la pantalla lo que acaba de escribir.
         wprintw(ventana1, concat(usuario,": %s\n"), buffer);
+
+        //Refrescar la pantalla.
         wrefresh(ventana1);
         limpiarVentana2();
     }
