@@ -15,16 +15,9 @@ char * obtener_usuario(char * buffer){
 		por el pipe de comunicacion
 	*/
 	char * usuario;
-	int i=0;
-	while(buffer[i]!='\0'){
-		i++;
-	}
-	usuario=(char *)malloc(i+1);
-	i=0;
-	while(buffer[i]!='\0'){
-		usuario[i]=buffer[i];
-	}
-	usuario[i]='\0';
+	usuario = malloc(strlen(buffer)+1);
+	memcpy(usuario,buffer,strlen(buffer)+1);
+	usuario[strlen(usuario)]='\0';
 	return usuario;
 }
 
@@ -79,15 +72,12 @@ int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr,
 	}
 }
 
-int calcular_cheq(int * fds1, int * fds2){
+int calcular_cheq(int * fds){
 	int max = -1;
 	int i = 0;
 	for(;i<MAX_USR;i++){
-		if(max<fds1[i]){
-			max = fds1[i];
-		}
-		if(max<fds2[i]){
-			max = fds2[i];
+		if(max<fds[i]){
+			max = fds[i];
 		}
 	}
 	return max;
@@ -149,9 +139,10 @@ int main(int argc, char *argv[]){
 	while(1){
 		//SELECT
 		readfds_cpy = readfds;
-		cheq = calcular_cheq(fds_lectura,fds_escritura);
-		if(cheq != -1){
-			disp = select(cheq,&readfds_cpy,NULL,NULL,&tv);
+		cheq = calcular_cheq(fds_lectura);
+		if(cheq != -1 & cheq!=0){
+			printf("Descriptor mas bajo %d\n",cheq );
+			disp = select(cheq+1,&readfds_cpy,NULL,NULL,&tv);
 			if(disp == -1){
 				perror("Error de seleccion de pipes dobles");	
 			}else if(disp){
@@ -177,11 +168,10 @@ int main(int argc, char *argv[]){
 			com_buff[dafuq]='\0';
 			if(dafuq!=0)printf("Solicitud de conexion: %s\n",com_buff);
 			printf("Obteniendo usuario\n");
-			usuario_aux = com_buff;
+			usuario_aux = obtener_usuario(com_buff);
 			printf("Usuario obtenido\n");
 			pipe_r = obtener_pipe_lect(usuario_aux);
 			pipe_w = obtener_pipe_escr(usuario_aux);
-			printf("Pipes del usuario %s: %s %s\n",usuario_aux,pipe_w,pipe_r);
 			if((fdwrite_aux = open(pipe_w,O_WRONLY | O_NONBLOCK))<0){
 				fprintf(stderr, "Error al abrir pipe de escritura del usuario %s\n",usuario_aux);
 				return -1;
@@ -190,6 +180,7 @@ int main(int argc, char *argv[]){
 				fprintf(stderr, "Error al abrir pipe de lectura del usuario %s\n",usuario_aux);
 				return -1;
 			}
+			printf("Pipes del usuario %s: %s desc %d %s desc %d\n",usuario_aux,pipe_w,fdwrite_aux,pipe_r,fdread_aux);
 			if(!anhadir_usuario(usuarios,usuario_aux,fdread_aux,fdwrite_aux,fds_lectura,fds_escritura)){
 				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
 				close(fdwrite_aux);
