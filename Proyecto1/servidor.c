@@ -10,11 +10,12 @@
 #define TAM_BUFFER 2048
 #define MAX_USR 20
 
-void obtener_usuario(char * buffer, char * usuario){
+char * obtener_usuario(char * buffer){
 	/*	Esta funcion guarda en la variable usuario el nombre del usuario recibido en el buffer
 		por el pipe de comunicacion
 	*/
-	int total,i=0;
+	char * usuario;
+	int i=0;
 	while(buffer[i]!='\0'){
 		i++;
 	}
@@ -24,35 +25,39 @@ void obtener_usuario(char * buffer, char * usuario){
 		usuario[i]=buffer[i];
 	}
 	usuario[i]='\0';
+	return usuario;
 }
 
-void obtener_pipe_lect(char * usr, char * piper){
+char * obtener_pipe_lect(char * usr){
 	/*	Esta funcion devuelve un arreglo de caracteres con el pipe de lectura para el servidor
 		dado un nombre de usuario.
 		Recordar que el pipe de lectura del servidor es el de escritura del cliente. Es por
 		eso que tmp_r es "/tmp/w_"
 	*/
+	char * piper;
 	char * tmp_r = "/tmp/w_";
 	size_t tmp_r_part = strlen("/tmp/w_");
 	piper = (char *)malloc(tmp_r_part+strlen(usr)+1);
 	memcpy(piper,tmp_r,tmp_r_part);
 	memcpy(piper + tmp_r_part,usr,strlen(usr) + 1);
 	piper[tmp_r_part+strlen(usr)]='\0';
-
+	return piper;
 }
 
-void obtener_pipe_escr(char * usr, char * pipew){
+char * obtener_pipe_escr(char * usr){
 	/*	Esta funcion devuelve un arreglo de caracteres con el pipe de escritura para el servidor
 		dado un nombre de usuario.
 		Recordar que el pipe de escritura del servidor es el de lectura del cliente. Es por
 		eso que tmp_w es "/tmp/r_"
 	*/
+	char * pipew;
 	char * tmp_w = "/tmp/r_";
 	size_t tmp_w_part = strlen("/tmp/r_");
 	pipew = (char *)malloc(tmp_w_part+strlen(usr)+1);
 	memcpy(pipew,tmp_w,tmp_w_part);
 	memcpy(pipew + tmp_w_part,usr,strlen(usr) + 1);
 	pipew[tmp_w_part+strlen(usr)]='\0';
+	return pipew;
 }
 
 int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr, int * fdsw){
@@ -73,6 +78,21 @@ int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr,
 		return 1;
 	}
 }
+
+int calcular_cheq(int * fds1, int * fds2){
+	int max = -1;
+	int i = 0;
+	for(;i<MAX_USR;i++){
+		if(max<fds1[i]){
+			max = fds1[i];
+		}
+		if(max<fds2[i]){
+			max = fds2[i];
+		}
+	}
+	return max;
+}
+
 int main(int argc, char *argv[]){ 
 	char * pipe_com;
 	char * usuario_aux;
@@ -86,7 +106,7 @@ int main(int argc, char *argv[]){
 	int dafuq;
 	int fds_lectura[20]={-1};
 	int fds_escritura[20]={-1};
-	int com_fd,comm_success,fdread_aux,fdwrite_aux;
+	int com_fd,comm_success,fdread_aux,fdwrite_aux,cheq,disp;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
 
@@ -127,8 +147,24 @@ int main(int argc, char *argv[]){
 	printf("Se abrio el pipe: %s y su descriptor es %d\n",pipe_com,com_fd);
 	
 	while(1){
-		//printf("while true\n");
 		//SELECT
+		readfds_cpy = readfds;
+		cheq = calcular_cheq(fds_lectura,fds_escritura);
+		if(cheq != -1){
+			disp = select(cheq,&readfds_cpy,NULL,NULL,&tv);
+			if(disp == -1){
+				perror("Error de seleccion de pipes dobles");	
+			}else if(disp){
+				int i = 0;
+				for(; i<MAX_USR;i++){
+					if(FD_ISSET(fds_lectura[i],&readfds_cpy)){
+						read(fds_lectura[i],com_buff,TAM_BUFFER);
+						//procesar(com_buff);
+						printf("Mensaje de %s : %s\n",usuarios[i],com_buff);
+					}
+				}
+			}
+		}
 		//Chequear pipe de comunicacion
 		//dafuq = read(com_fd,com_buff,TAM_BUFFER);
 		//if(dafuq!=0)printf("Recibido: %s\n",com_buff);
@@ -139,10 +175,13 @@ int main(int argc, char *argv[]){
 		}else if(comm_success){
 			dafuq = read(com_fd,com_buff,TAM_BUFFER);
 			com_buff[dafuq]='\0';
-			printf("Recibido: %s\n",com_buff);
-			obtener_usuario(com_buff,usuario_aux);
-			obtener_pipe_lect(usuario_aux,pipe_r);
-			obtener_pipe_escr(usuario_aux,pipe_w);
+			if(dafuq!=0)printf("Solicitud de conexion: %s\n",com_buff);
+			printf("Obteniendo usuario\n");
+			usuario_aux = com_buff;
+			printf("Usuario obtenido\n");
+			pipe_r = obtener_pipe_lect(usuario_aux);
+			pipe_w = obtener_pipe_escr(usuario_aux);
+			printf("Pipes del usuario %s: %s %s\n",usuario_aux,pipe_w,pipe_r);
 			if((fdwrite_aux = open(pipe_w,O_WRONLY | O_NONBLOCK))<0){
 				fprintf(stderr, "Error al abrir pipe de escritura del usuario %s\n",usuario_aux);
 				return -1;
