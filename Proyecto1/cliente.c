@@ -34,23 +34,32 @@ char* concat(char *s1, char *s2){
 char* crearPipe_w(char* usuario){
 	char* dir_w = "/tmp/w_";
     char* escritura = concat(dir_w,usuario);
-    mkfifo(escritura, 0666);
+    if(unlink(escritura)>=0){
+		printf("Unlink hechor\n");
+	}
+    if(mkfifo(escritura, 0666)<0){
+    	printf("No se creo el pipe");
+    }
     return escritura;
 }
 
 //Crear pipe de lectura.
 char* crearPipe_r(char* usuario){
+
 	char* dir_l = "/tmp/r_";
 	char* lectura = concat(dir_l,usuario);
-    mkfifo(lectura, 0666);
+	if(unlink(lectura)>=0){
+		printf("Unlink hechor\n");
+	}
+    if(mkfifo(lectura, 0666)<0){
+    	printf("No se creo el pipe");
+    }
     return lectura;
 }
 
 //Conectarse al servidor (Enviar nombre del usuario por el pipe com)
 int conectarServidor(char * usuario,char * pipe_serv){
 	int fd;
-	printf("Se ha creado %s\n",crearPipe_w(usuario));
-	printf("Se ha creado %s\n",crearPipe_r(usuario));
 	if((fd = open(pipe_serv, O_WRONLY |O_NONBLOCK))<0){
 		fprintf(stderr, "Error al abrir pipe de comunicacion.\n");
 		return 0;
@@ -59,8 +68,6 @@ int conectarServidor(char * usuario,char * pipe_serv){
     	fprintf(stderr, "Error al escribir en pipe de comunicacion. Descriptor %d\n",fd);
 		return 0;
     }
-
-    //printf("%s se ha conectado a: %s\n", usuario, pipe_serv);
     close(fd);
     return 1;
 }
@@ -156,24 +163,18 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 			}
 		}
 	}
-
-	pwrite = concat(dir_wr,usuario);	
-	pread = concat(dir_re,usuario);
-	unlink(pwrite);
-	unlink(pread);
-
+	printf("Se ha creado %s\n",pwrite = crearPipe_w(usuario));
+	printf("Se ha creado %s\n",pread = crearPipe_r(usuario));
 	if(conectarServidor(usuario,pipe_com)){
 	}else{
 		fprintf(stderr,"Error al conectarServidor\n");
 		return -1;
 	}
-
 	//Obtenemos la direccion de los pipes
-
 
 	// los abrimos y los metemos en cada file descriptor
 
-	if((fd_w = open(pwrite,O_WRONLY |O_NONBLOCK))<0){
+	if((fd_w = open(pwrite, O_WRONLY|O_NONBLOCK))<0){
 		printf("No se abrio %s\n",pwrite);
 		return 1;
 	}
@@ -257,6 +258,5 @@ void limpiarVentana2() {
     wmove(ventana2, 1, 0);
     wrefresh(ventana2);
 }
-
 
 
