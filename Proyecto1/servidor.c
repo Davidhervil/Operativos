@@ -23,7 +23,33 @@ void obtener_usuario(char * buffer, char * usuario){
 	usuario[i]='\0';
 }
 
-void obtener_pipe_r(char * usr, char * piper){
+void obtener_pipe_lect(char * usr, char * piper){
+	/*	Esta funcion devuelve un arreglo de caracteres con el pipe de lectura para el servidor
+		dado un nombre de usuario.
+		Recordar que el pipe de lectura del servidor es el de escritura del cliente. Es por
+		eso que tmp_r es "/tmp/w_"
+	*/
+	char * tmp_r = "/tmp/w_";
+	size_t tmp_r_part = strlen("/tmp/w_");
+	piper = (char *)malloc(tmp_r_part+strlen(usr)+1);
+	memcpy(piper,tmp_r,tmp_r_part);
+	memcpy(piper + tmp_r_part,usr,strlen(usr) + 1)
+	piper[tmp_r_part+strlen(usr)]='\0';
+
+}
+
+void obtener_pipe_escr(char * usr, char * pipew){
+	/*	Esta funcion devuelve un arreglo de caracteres con el pipe de escritura para el servidor
+		dado un nombre de usuario.
+		Recordar que el pipe de escritura del servidor es el de lectura del cliente. Es por
+		eso que tmp_w es "/tmp/r_"
+	*/
+	char * tmp_w = "/tmp/r_";
+	size_t tmp_w_part = strlen("/tmp/r_");
+	pipew = (char *)malloc(tmp_w_part+strlen(usr)+1);
+	memcpy(pipew,tmp_w,tmp_w_part);
+	memcpy(pipew + tmp_w_part,usr,strlen(usr) + 1)
+	pipew[tmp_w_part+strlen(usr)]='\0';
 }
 
 int anhadir_usuario(char * conjunto[], char * usr){
@@ -46,9 +72,9 @@ int main(int argc, char *argv[]){
 	char * pipe_w;
 	char com_buff[TAM_BUFFER];
 
-	int fd_lectura[20];
-	int fd_escritura[20];
-	int com_fd,comm_success;
+	int fd_lectura[20]={-1};
+	int fd_escritura[20]={-1};
+	int com_fd,comm_success,fdread_aux,fdwrite_aux;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
 
@@ -74,7 +100,6 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "Uso esperado: %s [pipe]\n", argv[0]);
 		return 1;
 	}
-	unlink(pipe_com);
 	if(mkfifo(pipe_com,0666)<0){
 		fprintf(stderr,"NO SE PUDO CREAR pipe_com\n");
 		return 1;
@@ -103,13 +128,13 @@ int main(int argc, char *argv[]){
 			dafuq = read(com_fd,com_buff,TAM_BUFFER);
 			com_buff[dafuq]='\0';
 			printf("Recibido: %s\n",com_buff);
-			/*
 			obtener_usuario(com_buff,usuario_aux);
-			obtener_pipe_r(usuario_aux,pipe_r);
-			obtener_pipe_w(usuario,pipe_w);
+			obtener_pipe_lect(usuario_aux,pipe_r);
+			obtener_pipe_escr(usuario_aux,pipe_w);
+			if((fdwrite_aux = open(pipe_w,)
 			if(!anhadir_usuario(usuarios,usuario)){
-				//enviar al usuario un mensaje de no poder agregar
-			*/
+				//enviar al usuario un mensaje de no poder agregar<
+			}
 		}
 	}
 
