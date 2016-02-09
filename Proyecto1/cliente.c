@@ -44,16 +44,18 @@ char* crearPipe_r(char* usuario){
     mkfifo(lectura, 0666);
     return lectura;
 }
-int conectarServidor(char* usuario,char* pipe_serv){
+int conectarServidor(char * usuario,char * pipe_serv){
 	int fd;
-	if(fd = open(pipe_serv, O_WRONLY |O_NONBLOCK)){
-		fprintf(stderr, "Error al abrir pipe de comunicacion");
+	if((fd = open(pipe_serv, O_WRONLY |O_NONBLOCK))<0){
+		fprintf(stderr, "Error al abrir pipe de comunicacion.\n");
 		return 0;
 	}	
-    write(fd, usuario, sizeof(usuario));
-    printf("%s se ha conectado a: %s\n", usuario, pipe_serv);
-	sleep(5);
-    //close(fd);
+    if(write(fd, usuario, sizeof(usuario))<=0){
+    	fprintf(stderr, "Error al escribir en pipe de comunicacion. Descriptor %d\n",fd);
+		return 0;
+    }
+    //printf("%s se ha conectado a: %s\n", usuario, pipe_serv);
+    close(fd);
     return 1;
 }
 
@@ -94,7 +96,8 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 					pipe_com = (char *)malloc(tmp_part+nam_given_size+1);
 					memcpy(pipe_com,"/tmp/",tmp_part);
 					memcpy(pipe_com + tmp_part,argv[2],nam_given_size+1); /////////////////
-					pipe_com[strlen(pipe_com)-1] = '\0';
+					pipe_com[strlen(pipe_com)] = '\0';
+					printf("%s\n",pipe_com);
 
 					//Usuario predeterminado
 					usuario=(char *)malloc(dflt_usr_len+1);
@@ -134,7 +137,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 	if(conectarServidor(usuario,pipe_com)){
 	printf("Conectado a: %s\n",pipe_com);
 	}else{
-		printf("Error al conectarServidor\n");
+		fprintf(stderr,"Error al conectarServidor\n");
 		return -1;
 	}
 	sleep(5);
