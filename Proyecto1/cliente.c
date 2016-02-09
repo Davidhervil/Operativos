@@ -21,6 +21,7 @@
 WINDOW *ventana1, *ventana2;
 
 /* Mueve el cursor al punto de inserción actual de la ventana 2. */
+// Funcion para concatenar.
 char* concat(char *s1, char *s2){
 	char *result;
     result = (char*)malloc(strlen(s1)+strlen(s2)+1);
@@ -29,23 +30,25 @@ char* concat(char *s1, char *s2){
     return result;
 }
 
-char* crearPipe_w(char* usuario){
-	int fd_w;
+//Crear pipe de wscritura.
+void crearPipe_w(char* usuario){
 	char* dir_w = "/tmp/w_";
     char* escritura = concat(dir_w,usuario);
     mkfifo(escritura, 0666);
-    return escritura;
 }
 
-char* crearPipe_r(char* usuario){
-	int fd_r;
+//Crear pipe de lectura.
+void crearPipe_r(char* usuario){
 	char* dir_l = "/tmp/r_";
 	char* lectura = concat(dir_l,usuario);
     mkfifo(lectura, 0666);
-    return lectura;
 }
+
+//Conectarse al servidor (Enviar nombre del usuario por el pipe com)
 int conectarServidor(char * usuario,char * pipe_serv){
 	int fd;
+	crearPipe_w(usuario);
+	crearPipe_r(usuario);
 	if((fd = open(pipe_serv, O_WRONLY |O_NONBLOCK))<0){
 		fprintf(stderr, "Error al abrir pipe de comunicacion.\n");
 		return 0;
@@ -61,11 +64,17 @@ int conectarServidor(char * usuario,char * pipe_serv){
 }
 
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
+	int fd_w,fd_r;									// Filedescriptors de los dos pipes que se crean.
 	size_t tmp_part=strlen("/tmp/");				
 	size_t nam_given_size;							// Tamanio del nombre proporcionado
 	size_t dflt_usr_len=strlen(getenv("USER"));		// Tamanio del nombre de usuario por defecto
 	char * usuario;									// usuario y pipe_com son apuntadores.
 	char * pipe_com;
+	char* dir_wr = "/tmp/w_";
+    char* pwrite;
+    char* pread;
+    char* dir_re = "/tmp/r_";
+
 
 	if(argc==1){									// Si solo se proporciona un argumento, entonces el pipe y el usuario se toman por defecto
 		//Acciones por defecto
@@ -135,12 +144,22 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 			}
 		}
 	}
+
+
 	if(conectarServidor(usuario,pipe_com)){
-	printf("Conectado a: %s\n",pipe_com);
 	}else{
 		fprintf(stderr,"Error al conectarServidor\n");
 		return -1;
 	}
+
+	//Obtenemos la direccion de los pipes
+	pwrite = concat(dir_wr,usuario);	
+	pread = concat(dir_re,usuario);
+
+	// los abrimos y los metemos en cada file descriptor
+	fd_w = open(pwrite,O_WRONLY|O_NONBLOCK);
+	fd_r = open(pwrite,O_RDONLY|O_NONBLOCK);
+
 	/////////////////////////////////////////////////////////////////////
 	    
 	    initscr(); // Inicializar la biblioteca ncurses
@@ -168,6 +187,11 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
         if (strcmp(buffer, "-salir") == 0) {
             break;
         }
+
+        //Escribir al servidor
+        write(fd_w,buffer,strlen(buffer)+1);
+
+
         wprintw(ventana1, concat(usuario,": %s\n"), buffer);
         wrefresh(ventana1);
         limpiarVentana2();
