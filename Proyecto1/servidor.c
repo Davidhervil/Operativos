@@ -150,7 +150,7 @@ int main(int argc, char *argv[]){
 				fprintf(stderr, "Error al abrir pipe de lectura del usuario %s\n",usuario_aux);
 				return -1;
 			}
-			if(!anhadir_usuario(usuarios,usuario,fdread_aux,fdwrite_aux)){
+			if(!anhadir_usuario(usuarios,usuario,fdread_aux,fdwrite_aux,fds_lectura,fds_escritura)){
 				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
 				close(fdwrite_aux);
 				close(fdread_aux);
