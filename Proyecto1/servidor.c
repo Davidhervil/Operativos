@@ -36,7 +36,7 @@ void obtener_pipe_lect(char * usr, char * piper){
 	size_t tmp_r_part = strlen("/tmp/w_");
 	piper = (char *)malloc(tmp_r_part+strlen(usr)+1);
 	memcpy(piper,tmp_r,tmp_r_part);
-	memcpy(piper + tmp_r_part,usr,strlen(usr) + 1)
+	memcpy(piper + tmp_r_part,usr,strlen(usr) + 1);
 	piper[tmp_r_part+strlen(usr)]='\0';
 
 }
@@ -51,11 +51,11 @@ void obtener_pipe_escr(char * usr, char * pipew){
 	size_t tmp_w_part = strlen("/tmp/r_");
 	pipew = (char *)malloc(tmp_w_part+strlen(usr)+1);
 	memcpy(pipew,tmp_w,tmp_w_part);
-	memcpy(pipew + tmp_w_part,usr,strlen(usr) + 1)
+	memcpy(pipew + tmp_w_part,usr,strlen(usr) + 1);
 	pipew[tmp_w_part+strlen(usr)]='\0';
 }
 
-int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr, int fdsw){
+int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr, int * fdsw){
 	/*	Esta funcion anhade a un usuario en el arreglo de usuarios y anhade los descriptores de
 		sus pipes asociaos a los arreglos fdsr y fdsw. La posicion del usuario
 		corresponde con las posiciones de sus descriptores asociados.
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]){
 				fprintf(stderr, "Error al abrir pipe de lectura del usuario %s\n",usuario_aux);
 				return -1;
 			}
-			if(!anhadir_usuario(usuarios,usuario,fdread_aux,fdwrite_aux,fds_lectura,fds_escritura)){
+			if(!anhadir_usuario(usuarios,usuario_aux,fdread_aux,fdwrite_aux,fds_lectura,fds_escritura)){
 				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
 				close(fdwrite_aux);
 				close(fdread_aux);
