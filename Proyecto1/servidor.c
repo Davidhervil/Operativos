@@ -74,7 +74,7 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "Uso esperado: %s [pipe]\n", argv[0]);
 		return 1;
 	}
-
+	unlink(pipe_com);
 	if(mkfifo(pipe_com,0666)<0){
 		fprintf(stderr,"NO SE PUDO CREAR pipe_com\n");
 		return 1;
@@ -88,6 +88,7 @@ int main(int argc, char *argv[]){
 	FD_SET(com_fd,&comm);
 	printf("Se abrio el pipe: %s y su descriptor es %d\n",pipe_com,com_fd);
 	int dafuq;
+	
 	while(1){
 		//printf("while true\n");
 		//SELECT
@@ -115,7 +116,6 @@ int main(int argc, char *argv[]){
 
 	/*int fd;
 	char * myfifo="/tmp/myfifio";
-
 	mkfifo(myfifo, 0666);
 	fd = open(myfifo, O_WRONLY);
 	write(fd, "HI",sizeof("HI"));
