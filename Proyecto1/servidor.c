@@ -141,11 +141,11 @@ int main(int argc, char *argv[]){
 		readfds_cpy = readfds;
 		cheq = calcular_cheq(fds_lectura);
 		if(cheq != -1 & cheq!=0){
-			printf("Descriptor mas bajo %d\n",cheq );
 			disp = select(cheq+1,&readfds_cpy,NULL,NULL,&tv);
 			if(disp == -1){
 				perror("Error de seleccion de pipes dobles");	
 			}else if(disp){
+				printf("A LEER MMGVO\n");
 				int i = 0;
 				for(; i<MAX_USR;i++){
 					if(FD_ISSET(fds_lectura[i],&readfds_cpy)){
