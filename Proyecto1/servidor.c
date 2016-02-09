@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define TAM 2048
+#define TAM_BUFFER 2048
 #define MAX_USR 20
 
 void obtener_usuario(char * buffer, char * usuario){
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
 	char * usuario_aux;
 	char * pipe_r;
 	char * pipe_w;
-	char com_buff[TAM];
+	char com_buff[TAM_BUFFER];
 
 	int fd_lectura[20];
 	int fd_escritura[20];
@@ -79,24 +79,26 @@ int main(int argc, char *argv[]){
 		fprintf(stderr,"NO SE PUDO CREAR pipe_com\n");
 		return 1;
 	}else{
-		printf("PIpe de coneccion creado\n");
+		printf("Pipe de conexion creado\n");
 	}
-	if(com_fd = open(pipe_com,O_RDONLY | O_NONBLOCK)<0){
+	if((com_fd = open(pipe_com,O_RDWR | O_NONBLOCK))<0){
 		fprintf(stderr, "Error al abrir pipe de comunicacion\n");
 		return 1;
 	}
 	FD_SET(com_fd,&comm);
-	printf("Se abrio el pipe: %s\n",pipe_com);
+	printf("Se abrio el pipe: %s y su descriptor es %d\n",pipe_com,com_fd);
+
 	while(1){
-		printf("while true\n");
+		//printf("while true\n");
 		//SELECT
 		//Chequear pipe de comunicacion
+		//printf("Recibido: %s\n",com_buff);
 		comm_cpy = comm;
-		comm_success = select(1,&comm_cpy,NULL,NULL, &tv);
+		comm_success = select(2,&comm_cpy,NULL,NULL, &tv);
 		if(comm_success == -1){
 			perror("Error de comunicacion");
 		}else if(comm_success){
-			read(com_fd,com_buff,TAM);
+			read(com_fd,com_buff,TAM_BUFFER);
 			printf("Recibido: %s\n",com_buff);
 			/*
 			obtener_usuario(com_buff,usuario_aux);
