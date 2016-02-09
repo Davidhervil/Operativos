@@ -87,18 +87,20 @@ int main(int argc, char *argv[]){
 	}
 	FD_SET(com_fd,&comm);
 	printf("Se abrio el pipe: %s y su descriptor es %d\n",pipe_com,com_fd);
-
+	int dafuq;
 	while(1){
 		//printf("while true\n");
 		//SELECT
 		//Chequear pipe de comunicacion
-		//printf("Recibido: %s\n",com_buff);
+		//dafuq = read(com_fd,com_buff,TAM_BUFFER);
+		//if(dafuq!=0)printf("Recibido: %s\n",com_buff);
 		comm_cpy = comm;
-		comm_success = select(2,&comm_cpy,NULL,NULL, &tv);
+		comm_success = select(com_fd+1,&comm_cpy,NULL,NULL, &tv);
 		if(comm_success == -1){
 			perror("Error de comunicacion");
 		}else if(comm_success){
-			read(com_fd,com_buff,TAM_BUFFER);
+			dafuq = read(com_fd,com_buff,TAM_BUFFER);
+			com_buff[dafuq]='\0';
 			printf("Recibido: %s\n",com_buff);
 			/*
 			obtener_usuario(com_buff,usuario_aux);
