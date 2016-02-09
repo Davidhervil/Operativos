@@ -90,7 +90,8 @@ int main(int argc, char *argv[]){
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
 
-	fd_set readfds,writefds,comm,comm_cpy;
+	fd_set readfds,writefds,comm,comm_cpy,readfds_cpy,writefds_cpy;
+
 	struct timeval tv;
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
@@ -154,6 +155,9 @@ int main(int argc, char *argv[]){
 				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
 				close(fdwrite_aux);
 				close(fdread_aux);
+			}else{
+				FD_SET(fdwrite_aux,&writefds);
+				FD_SET(fdread_aux,&readfds);
 			}
 		}
 	}
