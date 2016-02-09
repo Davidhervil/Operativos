@@ -50,10 +50,11 @@ int conectarServidor(char * usuario,char * pipe_serv){
 		fprintf(stderr, "Error al abrir pipe de comunicacion.\n");
 		return 0;
 	}	
-    if(write(fd, usuario, sizeof(usuario))<=0){
+    if(write(fd, usuario, strlen(usuario)+1)<=0){
     	fprintf(stderr, "Error al escribir en pipe de comunicacion. Descriptor %d\n",fd);
 		return 0;
     }
+
     //printf("%s se ha conectado a: %s\n", usuario, pipe_serv);
     close(fd);
     return 1;
@@ -83,7 +84,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 				//Asignamos al usuario el nombre proporcionado
 				usuario = (char *)malloc(strlen(argv[1])+1);
 				memcpy(usuario,argv[1],strlen(argv[1]));
-				usuario[strlen(usuario)-1] = '\0';
+				usuario[strlen(usuario)] = '\0';
 
 				//Pipe predeterminado
 				pipe_com="/tmp/servidor1210761-1210796";
@@ -140,7 +141,6 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		fprintf(stderr,"Error al conectarServidor\n");
 		return -1;
 	}
-	sleep(5);
 	/////////////////////////////////////////////////////////////////////
 	    
 	    initscr(); // Inicializar la biblioteca ncurses
