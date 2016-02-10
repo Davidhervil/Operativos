@@ -83,6 +83,37 @@ int calcular_cheq(int * fds){
 	return max;
 }
 
+void decodificar(char *buffer, char * usrs[],char * usrs_asociados[], char * estdos[], int pos, int fd_re, int * fdsw){
+	char * token;
+	char * salida;
+	int i = 0,esta = 0;
+	token = strtok(buffer, " ");
+	if(strcmp(token,"-escribir") == 0){
+		token = strtok(NULL," ");
+		for (; i < MAX_USR; ++i){
+			if(esta |= (strcmp(token,usrs[i]) == 0)){
+				break;
+			}
+		}
+		if(esta){
+			usrs_asociados[pos] = token;
+		}else{
+			write(fdsw[pos],"Usuario a escribir no existente",TAM_BUFFER);
+		}
+	}else{
+		if(usrs_asociados[pos]==NULL){
+			write(fdsw[pos],"Usuario destino no especificado\n'-quien' para ver usuarios conectados",TAM_BUFFER);
+		}else{
+			salida = (char *)malloc(strlen(buffer)+strlen(usrs_asociados[pos])+2);
+			memcpy(salida,usrs_asociados[pos],strlen(usrs_asociados[pos]));
+			salida[strlen(usrs_asociados[pos])]=':';
+			strcat(salida,buffer);
+			buffer = salida;
+			write(fdsw[pos],buffer,TAM_BUFFER);
+		}
+	}
+}
+
 int main(int argc, char *argv[]){ 
 	char * pipe_com;
 	char * usuario_aux;
@@ -153,7 +184,7 @@ int main(int argc, char *argv[]){
 					if(FD_ISSET(fds_lectura[i],&readfds_cpy)){
 						read(fds_lectura[i],com_buff,TAM_BUFFER);
 						com_buff[strlen(com_buff)]='\0';
-						//procesar(com_buff);
+						decodificar(com_buff,usuarios,usuario_asociado,estados,i,fds_lectura[i],fds_escritura);
 						printf("Mensaje de %s : %s\n",usuarios[i],com_buff);
 					}
 				}
