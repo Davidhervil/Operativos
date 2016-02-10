@@ -64,7 +64,7 @@ int conectarServidor(char * usuario,char * pipe_serv){
 		fprintf(stderr, "Error al abrir pipe de comunicacion.\n");
 		return 0;
 	}	
-    if(write(fd, usuario, strlen(usuario)+1)<=0){
+    if(write(fd, usuario,TAM)<=0){
     	fprintf(stderr, "Error al escribir en pipe de comunicacion. Descriptor %d\n",fd);
 		return 0;
     }
@@ -149,7 +149,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 						pipe_com = (char *)malloc(tmp_part+nam_given_size+1);
 						memcpy(pipe_com,"/tmp/",tmp_part);
 						memcpy(pipe_com + tmp_part,argv[2],nam_given_size+1);
-						pipe_com[strlen(pipe_com)-1] = '\0';
+						pipe_com[strlen(pipe_com)] = '\0';
 
 						//Asignamos al usuario el nombre proporcionado
 						usuario = (char *)malloc(strlen(argv[3])+1);
@@ -165,6 +165,10 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 	}
 	printf("Se ha creado %s\n",pwrite = crearPipe_w(usuario));
 	printf("Se ha creado %s\n",pread = crearPipe_r(usuario));
+	if((fd_r = open(pread,O_RDONLY|O_NONBLOCK))<0){
+		fprintf(stderr,"No se abrio %s\n",pread);
+		return 1;
+	}	
 	if(conectarServidor(usuario,pipe_com)){
 	}else{
 		fprintf(stderr,"Error al conectarServidor\n");
@@ -174,11 +178,10 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 
 	// los abrimos y los metemos en cada file descriptor
 
-	if((fd_w = open(pwrite, O_RDWR|O_NONBLOCK))<0){
-		printf("No se abrio %s\n",pwrite);
+	if((fd_w = open(pwrite, O_WRONLY))<0){
+		fprintf(stderr,"No se abrio %s\n",pwrite);
 		return 1;
 	}
-	fd_r = open(pread,O_RDONLY|O_NONBLOCK);
 	FD_SET(fd_r,&comm);
 
 
@@ -206,8 +209,8 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     while(1) {
         char buffer[TAM];
         wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
-        aux = write(fd_w,buffer,strlen(buffer)+1);
-		wprintw(ventana1, concat(usuario,"'Escribiste al pipe %d: %d letras' \n"), fd_w,aux-1);
+        aux = write(fd_w,buffer,TAM);
+		wprintw(ventana1, concat(usuario,"'Escribiste al pipe %d: %d letras' \n"), fd_w,strlen(buffer));
 
         if (strcmp(buffer, "-salir") == 0) {
             break;
