@@ -72,12 +72,27 @@ int conectarServidor(char * usuario,char * pipe_serv){
     return 1;
 }
 
+char * obtener_usr_displ(char * bffr){
+	char *usr;
+	int i=0;
+	while(bffr[i]!=':'){
+		i++;
+	}
+	usr = (char *)malloc(i+1);
+	strncpy(usr,bffr,i);
+	*(usr+i)= '\0';
+	return usr;
+}
+
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
 	int fd_w,fd_r,aux;									// Filedescriptors de los dos pipes que se crean.
 	size_t tmp_part=strlen("/tmp/");				
 	size_t nam_given_size;							// Tamanio del nombre proporcionado
 	size_t dflt_usr_len=strlen(getenv("USER"));		// Tamanio del nombre de usuario por defecto
+	
 	char * usuario;									// usuario y pipe_com son apuntadores.
+	char * usuario_dest;
+	char * usuario_displ;
 	char * pipe_com;
 	char* dir_wr = "/tmp/w_";
     char* pwrite;
@@ -210,7 +225,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
         char buffer[TAM];
         wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
         aux = write(fd_w,buffer,TAM);
-		wprintw(ventana1, concat(usuario,"'Escribiste al pipe %d: %d letras' \n"), fd_w,strlen(buffer));
+		wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
 
         if (strcmp(buffer, "-salir") == 0) {
             break;
@@ -223,8 +238,9 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		
 		}else if(comm_success){
 			leido = read(fd_r,com_buff,TAM);
-			com_buff[leido]='\0';
-			wprintw(ventana1, concat(usuario,": %s\n"), com_buff);
+			com_buff[strlen(com_buff)]='\0';
+			usuario_displ = obtener_usr_displ(com_buff);
+			wprintw(ventana1, concat(usuario_displ,": %s\n"), com_buff+strlen(usuario_displ)+1);
 		}
 
         //Escribir al servidor
