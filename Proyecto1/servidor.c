@@ -53,7 +53,7 @@ char * obtener_pipe_escr(char * usr){
 	return pipew;
 }
 
-int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr, int * fdsw){
+int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int  fdsr[], int fdsw[]){
 	/*	Esta funcion anhade a un usuario en el arreglo de usuarios y anhade los descriptores de
 		sus pipes asociaos a los arreglos fdsr y fdsw. La posicion del usuario
 		corresponde con las posiciones de sus descriptores asociados.
@@ -66,7 +66,7 @@ int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int * fdsr,
 		return 0;
 	}else{
 		fdsr[i] = fdr;
-		fdsr[i] = fdw;
+		fdsw[i] = fdw;
 		conjunto[i] = usr;
 		return 1;
 	}
@@ -94,8 +94,8 @@ int main(int argc, char *argv[]){
 	char * usuario_asociado[MAX_USR]={NULL};
 
 	int dafuq;
-	int fds_lectura[20]={-1};
-	int fds_escritura[20]={-1};
+	int fds_lectura[20];
+	int fds_escritura[20];
 	int com_fd,comm_success,fdread_aux,fdwrite_aux,cheq,disp;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
@@ -108,6 +108,8 @@ int main(int argc, char *argv[]){
 	FD_ZERO(&comm);
 	FD_ZERO(&readfds);
 	FD_ZERO(&writefds);
+	memset(fds_lectura,-1,sizeof(fds_lectura));
+	memset(fds_escritura,-1,sizeof(fds_escritura));
 
 	if(argc==1){
 		pipe_com = "/tmp/servidor1210761-1210796";
@@ -140,16 +142,17 @@ int main(int argc, char *argv[]){
 		//SELECT
 		readfds_cpy = readfds;
 		cheq = calcular_cheq(fds_lectura);
-		if(cheq != -1 & cheq!=0){
+		if(cheq != -1){
 			disp = select(cheq+1,&readfds_cpy,NULL,NULL,&tv);
 			if(disp == -1){
 				perror("Error de seleccion de pipes dobles");	
 			}else if(disp){
-				printf("A LEER MMGVO\n");
+				//printf("A LEER MMGVO\n");
 				int i = 0;
 				for(; i<MAX_USR;i++){
 					if(FD_ISSET(fds_lectura[i],&readfds_cpy)){
 						read(fds_lectura[i],com_buff,TAM_BUFFER);
+						com_buff[strlen(com_buff)]='\0';
 						//procesar(com_buff);
 						printf("Mensaje de %s : %s\n",usuarios[i],com_buff);
 					}
@@ -173,10 +176,10 @@ int main(int argc, char *argv[]){
 			pipe_r = obtener_pipe_lect(usuario_aux);
 			pipe_w = obtener_pipe_escr(usuario_aux);
 			if((fdwrite_aux = open(pipe_w,O_WRONLY | O_NONBLOCK))<0){
-				fprintf(stderr, "Error al abrir pipe de escritura del usuario %s\n",usuario_aux);
+				fprintf(stderr, "Error al abrir pipe de escritura al usuario %s\n",usuario_aux);
 				return -1;
 			}
-			if((fdread_aux = open(pipe_r, O_RDONLY | O_NONBLOCK))<0){
+			if((fdread_aux = open(pipe_r, O_RDONLY|O_NONBLOCK))<0){
 				fprintf(stderr, "Error al abrir pipe de lectura del usuario %s\n",usuario_aux);
 				return -1;
 			}
