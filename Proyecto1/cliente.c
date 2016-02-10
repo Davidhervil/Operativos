@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include "chat.h"
 #include <time.h>
-
+#include <signal.h>
 
 #define ALTO 5 // Alto de la ventana 2
 #define LINES_MIN 10 // Alto mínimo que debe tener el terminal
@@ -84,7 +84,20 @@ char * obtener_usr_displ(char * bffr){
 	return usr;
 }
 
+int procesar(char * bffr,char * usr_dest){
+	char * token;
+	token = strtok(bffr, " ");
+	if(strcmp(token,"-escribir") == 0){
+		token = strtok(NULL," ");
+		usr_dest = token;
+		return 1;
+	}else{
+		return 0;
+	}
+}
+
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
+	//signal(SIGINT,SIG_IGN);
 	int fd_w,fd_r,aux;									// Filedescriptors de los dos pipes que se crean.
 	size_t tmp_part=strlen("/tmp/");				
 	size_t nam_given_size;							// Tamanio del nombre proporcionado
@@ -224,8 +237,11 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     while(1) {
         char buffer[TAM];
         wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
+        if(buffer[0]=='-'){
+        	procesar(buffer,usuario_dest);
+        }
         aux = write(fd_w,buffer,TAM);
-		wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
+		//wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
 
         if (strcmp(buffer, "-salir") == 0) {
             break;
@@ -259,6 +275,8 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     }
 
     endwin(); // Restaurar la operación del terminal a modo normal
+    close(fd_r);
+    close(fd_w);
     exit(0);
 }
 void enfocarVentana2() {
