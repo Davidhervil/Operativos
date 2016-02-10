@@ -15,7 +15,7 @@ char * obtener_usuario(char * buffer){
 		por el pipe de comunicacion
 	*/
 	char * usuario;
-	usuario = malloc(strlen(buffer)+1);
+	usuario = (char*)malloc(strlen(buffer)+1);
 	memcpy(usuario,buffer,strlen(buffer)+1);
 	usuario[strlen(usuario)]='\0';
 	return usuario;
@@ -189,6 +189,7 @@ int main(int argc, char *argv[]){
 				close(fdwrite_aux);
 				close(fdread_aux);
 			}else{
+				write(fdwrite_aux,"Servidor:Comandos disponibles\n -escribir <usuario>\n -estoy <estado>\n -salir",TAM_BUFFER);
 				FD_SET(fdwrite_aux,&writefds);
 				FD_SET(fdread_aux,&readfds);
 			}
