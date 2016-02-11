@@ -10,6 +10,23 @@
 #define TAM_BUFFER 2048
 #define MAX_USR 20
 
+typedef struct usuarios{
+	int fd_lectura;
+	int fd_escritura;
+	char nombre[20];
+	char estado[1024];
+	char nombre_destino[20];
+}usuario;
+
+void inicializar(usuario U[]){
+	int i=0;
+	for(;i<MAX_USR;i++){
+		U[i].fd_lectura = -1;
+		U[i].fd_escritura = -1;
+		sprintf(U[i].nombre,"-?");
+		sprintf(U[i].nombre_destino,"-?");
+	}
+}
 char * obtener_usuario(char * buffer){
 	/*	Esta funcion guarda en la variable usuario el nombre del usuario recibido en el buffer
 		por el pipe de comunicacion
@@ -53,31 +70,32 @@ char * obtener_pipe_escr(char * usr){
 	return pipew;
 }
 
-int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int  fdsr[], int fdsw[]){
+int anhadir_usuario(usuario conjunto[], char * usr, int fdr, int fdw){
 	/*	Esta funcion anhade a un usuario en el arreglo de usuarios y anhade los descriptores de
 		sus pipes asociaos a los arreglos fdsr y fdsw. La posicion del usuario
 		corresponde con las posiciones de sus descriptores asociados.
 	*/
 	int i=0;
-	while(conjunto[i]!=NULL){
+	while(conjunto[i].fd_lectura!=-1){
 		i++;
 	}
 	if(i == MAX_USR){
 		return 0;
 	}else{
-		fdsr[i] = fdr;
-		fdsw[i] = fdw;
-		conjunto[i] = usr;
+		conjunto[i].fd_lectura = fdr;
+		conjunto[i].fd_escritura = fdw;
+		sprintf(conjunto[i].nombre,"%s", usr);
+		sprintf(conjunto[i].nombre_destino,"-?");
 		return 1;
 	}
 }
 
-int calcular_cheq(int * fds){
+int calcular_cheq(usuario conected[]){
 	int max = -1;
 	int i = 0;
 	for(;i<MAX_USR;i++){
-		if(max<fds[i]){
-			max = fds[i];
+		if(conected[i].fd_lectura > max){
+			max = conected[i].fd_lectura;
 		}
 	}
 	return max;
@@ -89,27 +107,22 @@ int main(int argc, char *argv[]){
 	char * pipe_r;
 	char * pipe_w;
 	char com_buff[TAM_BUFFER];
-	char * usuarios[MAX_USR]={NULL};
-	char * estados[MAX_USR]={NULL};
-	char * usuario_asociado[MAX_USR]={NULL};
 
-	int dafuq;
-	int fds_lectura[20];
-	int fds_escritura[20];
+	usuario conectados[MAX_USR];
+
+	int dafuq,ngga;
 	int com_fd,comm_success,fdread_aux,fdwrite_aux,cheq,disp;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
 
-	fd_set readfds,writefds,comm,comm_cpy,readfds_cpy,writefds_cpy;
+	fd_set readfds,comm,comm_cpy,readfds_cpy;
 
 	struct timeval tv;
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 	FD_ZERO(&comm);
 	FD_ZERO(&readfds);
-	FD_ZERO(&writefds);
-	memset(fds_lectura,-1,sizeof(fds_lectura));
-	memset(fds_escritura,-1,sizeof(fds_escritura));
+	inicializar(conectados);
 
 	if(argc==1){
 		pipe_com = "/tmp/servidor1210761-1210796";
@@ -141,7 +154,7 @@ int main(int argc, char *argv[]){
 	while(1){
 		//SELECT
 		readfds_cpy = readfds;
-		cheq = calcular_cheq(fds_lectura);
+		cheq = calcular_cheq(conectados);
 		if(cheq != -1){
 			disp = select(cheq+1,&readfds_cpy,NULL,NULL,&tv);
 			if(disp == -1){
@@ -150,11 +163,13 @@ int main(int argc, char *argv[]){
 				//printf("A LEER MMGVO\n");
 				int i = 0;
 				for(; i<MAX_USR;i++){
-					if(FD_ISSET(fds_lectura[i],&readfds_cpy)){
-						read(fds_lectura[i],com_buff,TAM_BUFFER);
+					if(FD_ISSET(conectados[i].fd_lectura,&readfds_cpy)){
+						ngga = read(conectados[i].fd_lectura,com_buff,TAM_BUFFER);
 						com_buff[strlen(com_buff)]='\0';
-						//procesar(com_buff);
-						printf("Mensaje de %s : %s\n",usuarios[i],com_buff);
+						//if(procesar(com_buff,conectados,i)){
+
+						//}
+						printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
 					}
 				}
 			}
@@ -184,13 +199,12 @@ int main(int argc, char *argv[]){
 				return -1;
 			}
 			printf("Pipes del usuario %s: %s desc %d %s desc %d\n",usuario_aux,pipe_w,fdwrite_aux,pipe_r,fdread_aux);
-			if(!anhadir_usuario(usuarios,usuario_aux,fdread_aux,fdwrite_aux,fds_lectura,fds_escritura)){
+			if(!anhadir_usuario(conectados,usuario_aux,fdread_aux,fdwrite_aux)){
 				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
 				close(fdwrite_aux);
 				close(fdread_aux);
 			}else{
 				write(fdwrite_aux,"Servidor:Comandos disponibles\n -escribir <usuario>\n -estoy <estado>\n -salir",TAM_BUFFER);
-				FD_SET(fdwrite_aux,&writefds);
 				FD_SET(fdread_aux,&readfds);
 			}
 		}
