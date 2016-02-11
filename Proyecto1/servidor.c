@@ -10,6 +10,24 @@
 #define TAM_BUFFER 2048
 #define MAX_USR 20
 
+typedef struct usuarios{
+	int fd_lectura;
+	int fd_escritura;
+	char nombre[20];
+	char estado[1024];
+	char nombre_destino[20];
+}usuario;
+
+void inicializar(usuario U[]){
+	int i=0;
+	for(;i<MAX_USR;i++){
+		U[i].fd_lectura = -1;
+		U[i].fd_escritura = -1;
+		sprintf(U[i].estado,"-?");
+		sprintf(U[i].nombre,"-?");
+		sprintf(U[i].nombre_destino,"-?");
+	}
+}
 char * obtener_usuario(char * buffer){
 	/*	Esta funcion guarda en la variable usuario el nombre del usuario recibido en el buffer
 		por el pipe de comunicacion
@@ -53,65 +71,60 @@ char * obtener_pipe_escr(char * usr){
 	return pipew;
 }
 
-int anhadir_usuario(char * conjunto[], char * usr, int fdr, int fdw, int  fdsr[], int fdsw[]){
+int anhadir_usuario(usuario conjunto[], char * usr, int fdr, int fdw){
 	/*	Esta funcion anhade a un usuario en el arreglo de usuarios y anhade los descriptores de
 		sus pipes asociaos a los arreglos fdsr y fdsw. La posicion del usuario
 		corresponde con las posiciones de sus descriptores asociados.
 	*/
 	int i=0;
-	while(conjunto[i]!=NULL){
+	while(conjunto[i].fd_lectura!=-1){
 		i++;
 	}
 	if(i == MAX_USR){
 		return 0;
 	}else{
-		fdsr[i] = fdr;
-		fdsw[i] = fdw;
-		conjunto[i] = usr;
+		conjunto[i].fd_lectura = fdr;
+		conjunto[i].fd_escritura = fdw;
+		sprintf(conjunto[i].nombre,"%s", usr);
+		sprintf(conjunto[i].nombre_destino,"-?");
 		return 1;
 	}
 }
 
-int calcular_cheq(int * fds){
+void eliminar_usuario(usuario U[], int pos){
+	int i=0;
+	char desc_msj[TAM_BUFFER];
+	for(;i<MAX_USR;i++){
+		if(strcmp(U[i].nombre_destino,U[pos].nombre) == 0){
+			sprintf(U[i].nombre_destino,"-?");
+			sprintf(desc_msj,"El usuario %s se ha desconectado",U[pos].nombre);
+			if(write(U[i].fd_escritura,desc_msj,TAM_BUFFER)<0){
+				fprintf(stderr, "Error enviando mensaje de desconexion a %s\n",U[i].nombre);
+			}
+		}
+	}
+	U[pos].fd_lectura = -1;
+	U[pos].fd_escritura = -1;
+	sprintf(U[pos].estado,"-?");
+	sprintf(U[pos].nombre,"-?");
+	sprintf(U[pos].nombre_destino,"-?");
+}
+
+int calcular_cheq(usuario conected[]){
 	int max = -1;
 	int i = 0;
 	for(;i<MAX_USR;i++){
-		if(max<fds[i]){
-			max = fds[i];
+		if(conected[i].fd_lectura > max){
+			max = conected[i].fd_lectura;
 		}
 	}
 	return max;
 }
+int procesar(char * buffer, usuario U[], int pos){
+	if(strcmp(buffer,"-salir") == 0){
 
-void decodificar(char *buffer, char * usrs[],char * usrs_asociados[], char * estdos[], int pos, int fd_re, int * fdsw){
-	char * token;
-	char * salida;
-	int i = 0,esta = 0;
-	token = strtok(buffer, " ");
-	if(strcmp(token,"-escribir") == 0){
-		token = strtok(NULL," ");
-		for (; i < MAX_USR; ++i){
-			if(esta |= (strcmp(token,usrs[i]) == 0)){
-				break;
-			}
-		}
-		if(esta){
-			usrs_asociados[pos] = token;
-		}else{
-			write(fdsw[pos],"Usuario a escribir no existente",TAM_BUFFER);
-		}
-	}else{
-		if(usrs_asociados[pos]==NULL){
-			write(fdsw[pos],"Usuario destino no especificado\n'-quien' para ver usuarios conectados",TAM_BUFFER);
-		}else{
-			salida = (char *)malloc(strlen(buffer)+strlen(usrs_asociados[pos])+2);
-			memcpy(salida,usrs_asociados[pos],strlen(usrs_asociados[pos]));
-			salida[strlen(usrs_asociados[pos])]=':';
-			strcat(salida,buffer);
-			buffer = salida;
-			write(fdsw[pos],buffer,TAM_BUFFER);
-		}
 	}
+	return 1;
 }
 
 int main(int argc, char *argv[]){ 
@@ -120,27 +133,22 @@ int main(int argc, char *argv[]){
 	char * pipe_r;
 	char * pipe_w;
 	char com_buff[TAM_BUFFER];
-	char * usuarios[MAX_USR]={NULL};
-	char * estados[MAX_USR]={NULL};
-	char * usuario_asociado[MAX_USR]={NULL};
 
-	int dafuq;
-	int fds_lectura[20];
-	int fds_escritura[20];
+	usuario conectados[MAX_USR];
+
+	int dafuq,ngga;
 	int com_fd,comm_success,fdread_aux,fdwrite_aux,cheq,disp;
 	size_t tmp_part=strlen("/tmp/");
 	size_t nam_given_size;
 
-	fd_set readfds,writefds,comm,comm_cpy,readfds_cpy,writefds_cpy;
+	fd_set readfds,comm,comm_cpy,readfds_cpy;
 
 	struct timeval tv;
 	tv.tv_sec = 1;
 	tv.tv_usec = 0;
 	FD_ZERO(&comm);
 	FD_ZERO(&readfds);
-	FD_ZERO(&writefds);
-	memset(fds_lectura,-1,sizeof(fds_lectura));
-	memset(fds_escritura,-1,sizeof(fds_escritura));
+	inicializar(conectados);
 
 	if(argc==1){
 		pipe_com = "/tmp/servidor1210761-1210796";
@@ -172,7 +180,7 @@ int main(int argc, char *argv[]){
 	while(1){
 		//SELECT
 		readfds_cpy = readfds;
-		cheq = calcular_cheq(fds_lectura);
+		cheq = calcular_cheq(conectados);
 		if(cheq != -1){
 			disp = select(cheq+1,&readfds_cpy,NULL,NULL,&tv);
 			if(disp == -1){
@@ -181,11 +189,18 @@ int main(int argc, char *argv[]){
 				//printf("A LEER MMGVO\n");
 				int i = 0;
 				for(; i<MAX_USR;i++){
-					if(FD_ISSET(fds_lectura[i],&readfds_cpy)){
-						read(fds_lectura[i],com_buff,TAM_BUFFER);
+					if(FD_ISSET(conectados[i].fd_lectura,&readfds_cpy)){
+						ngga = read(conectados[i].fd_lectura,com_buff,TAM_BUFFER);
 						com_buff[strlen(com_buff)]='\0';
-						decodificar(com_buff,usuarios,usuario_asociado,estados,i,fds_lectura[i],fds_escritura);
-						printf("Mensaje de %s : %s\n",usuarios[i],com_buff);
+						if(strcmp(com_buff,"-salir") == 0){
+							FD_CLR(conectados[i].fd_lectura,&readfds);
+							close(conectados[i].fd_lectura);
+							close(conectados[i].fd_escritura);
+							eliminar_usuario(conectados,i);
+						}else{
+							
+						}
+						printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
 					}
 				}
 			}
@@ -215,13 +230,12 @@ int main(int argc, char *argv[]){
 				return -1;
 			}
 			printf("Pipes del usuario %s: %s desc %d %s desc %d\n",usuario_aux,pipe_w,fdwrite_aux,pipe_r,fdread_aux);
-			if(!anhadir_usuario(usuarios,usuario_aux,fdread_aux,fdwrite_aux,fds_lectura,fds_escritura)){
+			if(!anhadir_usuario(conectados,usuario_aux,fdread_aux,fdwrite_aux)){
 				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
 				close(fdwrite_aux);
 				close(fdread_aux);
 			}else{
 				write(fdwrite_aux,"Servidor:Comandos disponibles\n -escribir <usuario>\n -estoy <estado>\n -salir",TAM_BUFFER);
-				FD_SET(fdwrite_aux,&writefds);
 				FD_SET(fdread_aux,&readfds);
 			}
 		}
