@@ -84,6 +84,21 @@ char * obtener_usr_displ(char * bffr){
 	return usr;
 }
 
+void end(int fdr,int fdw,char * pipe1, char *pipe2){
+	if(close(fdw)<0){
+		fprintf(stderr, "Error al cerrar pipe de escritura\n");
+	}
+    if(close(fdr)<0){
+    	fprintf(stderr, "Error al cerrar pipe de lectura\n");
+    }
+    if(unlink(pipe1)<0){
+    	fprintf(stderr, "Error al eliminar pipe %s\n",pipe1);
+    }
+    if(unlink(pipe2)<0){
+    	fprintf(stderr, "Error al eliminar pipe %s\n",pipe2);
+    }
+}
+
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
 	int fd_w,fd_r,aux;									// Filedescriptors de los dos pipes que se crean.
 	size_t tmp_part=strlen("/tmp/");				
@@ -228,6 +243,10 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		//wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
 
         if (strcmp(buffer, "-salir") == 0) {
+        	if(write(fd_w,buffer,TAM)<0){
+        		fprintf(stderr, "Error al escribir en%s\n",pwrite);
+        	}
+        	end(fd_r,fd_w,pwrite,pread);
             break;
         }
 
@@ -235,7 +254,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		comm_success = select(fd_r+1,&comm_cpy,NULL,NULL, &tv);
 		if(comm_success == -1){
 			perror("Error de comunicacion");
-		
+
 		}else if(comm_success){
 			leido = read(fd_r,com_buff,TAM);
 			com_buff[strlen(com_buff)]='\0';
