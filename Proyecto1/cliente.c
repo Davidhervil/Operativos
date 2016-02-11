@@ -99,7 +99,8 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     char* pread;
     char* dir_re = "/tmp/r_";
 	char com_buff[TAM];
-
+	char buffer[TAM];
+	
 	int comm_success,fdread_aux,fdwrite_aux,leido;
 	fd_set readfds,writefds,comm,comm_cpy,readfds_cpy,writefds_cpy;
 	struct timeval tv;
@@ -222,10 +223,9 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     limpiarVentana2(); // Dibujar la línea horizontal
 
     while(1) {
-        char buffer[TAM];
         wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
         aux = write(fd_w,buffer,TAM);
-		wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
+		//wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
 
         if (strcmp(buffer, "-salir") == 0) {
             break;
