@@ -100,7 +100,8 @@ void end(int fdr,int fdw,char * pipe1, char *pipe2){
 }
 
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
-	int fd_w,fd_r,aux;									// Filedescriptors de los dos pipes que se crean.
+
+	int fd_w,fd_r,aux,x;									// Filedescriptors de los dos pipes que se crean.
 	size_t tmp_part=strlen("/tmp/");				
 	size_t nam_given_size;							// Tamanio del nombre proporcionado
 	size_t dflt_usr_len=strlen(getenv("USER"));		// Tamanio del nombre de usuario por defecto
@@ -237,19 +238,58 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     scrollok(ventana2, TRUE);
     limpiarVentana2(); // Dibujar la línea horizontal
 
+ 	fd_set rfds;
+    int retval, len, pupu,tamcopy,j,k = 0;
+    char copia[500];
+
+    /* Watch stdin (fd 0) to see when it has input. */
+    FD_ZERO(&rfds);
+    FD_SET(0, &rfds);
+    wtimeout(ventana2,500);
+
+    /* Wait up to five seconds. */
+
     while(1) {
-        wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
-        aux = write(fd_w,buffer,TAM);
-		//wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
+    	retval = select(0, &rfds, NULL, NULL, &tv);
 
-        if (strcmp(buffer, "-salir") == 0) {
-        	if(write(fd_w,buffer,TAM)<0){
-        		fprintf(stderr, "Error al escribir en%s\n",pwrite);
-        	}
-        	end(fd_r,fd_w,pwrite,pread);
-            break;
+    	if (retval == -1){
+		}
+			//wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
+		else{
+        	wrefresh(ventana1);
+        	
+			if ((pupu = wgetnstr(ventana2, buffer, TAM)) == -1){
+				j = 0;
+				leaveok(ventana2,TRUE);
+				for(;j<strlen(buffer);j++){
+					copia[k] = buffer[j];
+					k++;
+				}
+	
+			}
+			else{
+			    
+	        	if (strcmp(copia, "-salir") == 0) {
+	        		if(write(fd_w,copia,TAM)<0){
+	        			fprintf(stderr, "Error al escribir en%s\n",pwrite);
+	        		}
+	        		end(fd_r,fd_w,pwrite,pread);
+	            	break;
+	        	}
+	  
+	        	wprintw(ventana1, concat(usuario,": %s %d \n"), copia,strlen(copia));
+	        	aux = write(fd_w,copia,TAM);
+	        	wrefresh(ventana1);
+	        	limpiarVentana2();
+	        	k=0;
+	        	leaveok(ventana2,FALSE);
+	        			        	
+			}
+			pupu = -1;
+
         }
-
+      
+        
 		comm_cpy = comm;
 		comm_success = select(fd_r+1,&comm_cpy,NULL,NULL, &tv);
 		if(comm_success == -1){
@@ -261,7 +301,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 			usuario_displ = obtener_usr_displ(com_buff);
 			wprintw(ventana1, concat(usuario_displ,": %s\n"), com_buff+strlen(usuario_displ)+1);
 		}
-
+        wrefresh(ventana1);
         //Escribir al servidor
 
         //if(strlen(buffer)>0){
@@ -270,14 +310,14 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
         //}
 
         //Escribir a la pantalla lo que acaba de escribir.
-        wprintw(ventana1, concat(usuario,": %s\n"), buffer);
-
+        
+		
+        
         //Refrescar la pantalla.
-        wrefresh(ventana1);
-        limpiarVentana2();
+
+
     }
 
-    endwin(); // Restaurar la operación del terminal a modo normal
     exit(0);
 }
 void enfocarVentana2() {
@@ -296,5 +336,4 @@ void limpiarVentana2() {
     wmove(ventana2, 1, 0);
     wrefresh(ventana2);
 }
-
 
