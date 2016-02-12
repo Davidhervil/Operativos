@@ -97,7 +97,7 @@ void eliminar_usuario(usuario U[], int pos){
 	for(;i<MAX_USR;i++){
 		if(strcmp(U[i].nombre_destino,U[pos].nombre) == 0){
 			sprintf(U[i].nombre_destino,"-?");
-			sprintf(desc_msj,"El usuario %s se ha desconectado",U[pos].nombre);
+			sprintf(desc_msj,"Servidor:El usuario %s se ha desconectado",U[pos].nombre);
 			if(write(U[i].fd_escritura,desc_msj,TAM_BUFFER)<0){
 				fprintf(stderr, "Error enviando mensaje de desconexion a %s\n",U[i].nombre);
 			}
@@ -121,7 +121,40 @@ int calcular_cheq(usuario conected[]){
 	return max;
 }
 int procesar(char * buffer, usuario U[], int pos){
-	if(strcmp(buffer,"-salir") == 0){
+	char command[20];
+	char buffer_cpy[TAM_BUFFER];
+	char usr[20];
+	char * token;
+	int * _void;
+	int i=0,esta = 0;
+
+	memcpy(buffer_cpy,buffer,TAM_BUFFER);
+	token = strtok(buffer_cpy," ");
+	sscanf(token,"%s",command);
+	printf("commando %s\n",command);
+	if(strcmp(command,"-escribir") == 0){
+		sscanf(buffer,"-escribir %s", usr);
+		printf("usuario nurvo a escrbir %s\n", usr);
+		for(;i<MAX_USR;i++){
+			esta |= (strcmp(U[i].nombre,usr) == 0);
+		}
+		if(esta){
+			sprintf(U[pos].nombre_destino,"%s",usr);
+		}else{
+			write(U[pos].fd_escritura,"Servidor:Usuario no encontrado",TAM_BUFFER);
+		}
+	}else{
+		if(strcmp(U[pos].nombre_destino,"-?") != 0){
+			sprintf(buffer_cpy,"%s:%s",U[pos].nombre,buffer);
+			for(;i<MAX_USR;i++){
+				if(strcmp(U[i].nombre,U[pos].nombre_destino) == 0){
+					break;
+				}
+			}
+			write(U[i].fd_escritura,buffer_cpy,TAM_BUFFER);
+		}else{
+			write(U[pos].fd_escritura,"Servidor:Usuario no asignado",TAM_BUFFER);
+		}
 
 	}
 	return 1;
@@ -133,6 +166,7 @@ int main(int argc, char *argv[]){
 	char * pipe_r;
 	char * pipe_w;
 	char com_buff[TAM_BUFFER];
+	char command[20];
 
 	usuario conectados[MAX_USR];
 
@@ -192,13 +226,14 @@ int main(int argc, char *argv[]){
 					if(FD_ISSET(conectados[i].fd_lectura,&readfds_cpy)){
 						ngga = read(conectados[i].fd_lectura,com_buff,TAM_BUFFER);
 						com_buff[strlen(com_buff)]='\0';
+						//Procesado
 						if(strcmp(com_buff,"-salir") == 0){
 							FD_CLR(conectados[i].fd_lectura,&readfds);
 							close(conectados[i].fd_lectura);
 							close(conectados[i].fd_escritura);
 							eliminar_usuario(conectados,i);
 						}else{
-							
+							procesar(com_buff,conectados,i);
 						}
 						printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
 					}
