@@ -99,7 +99,7 @@ void end(int fdr,int fdw,char * pipe1, char *pipe2){
     }
 }
 void salirbien(int signum){
-		write(3,"-salir\n",TAM);
+		write(4,"-salir",TAM);
 		close(3);
 		close(4);
 		endwin();
