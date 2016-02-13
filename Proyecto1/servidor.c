@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <signal.h>
 
 #define TAM_BUFFER 2048
 #define MAX_USR 20
@@ -94,6 +95,8 @@ int anhadir_usuario(usuario conjunto[], char * usr, int fdr, int fdw){
 void eliminar_usuario(usuario U[], int pos){
 	int i=0;
 	char desc_msj[TAM_BUFFER];
+	unlink(obtener_pipe_escr(U[pos].nombre));
+	unlink(obtener_pipe_lect(U[pos].nombre));
 	for(;i<MAX_USR;i++){
 		if(strcmp(U[i].nombre_destino,U[pos].nombre) == 0){
 			sprintf(U[i].nombre_destino,"-?");
@@ -165,7 +168,9 @@ int procesar(char * buffer, usuario U[], int pos){
 		}
 		write(U[pos].fd_escritura,buffer_cpy,TAM_BUFFER);
 
-	}else{
+	}
+	
+	else{
 		if(strcmp(U[pos].nombre_destino,"-?") != 0){
 			sprintf(buffer_cpy,"%s:%s",U[pos].nombre,buffer);
 			for(;i<MAX_USR;i++){
@@ -182,7 +187,18 @@ int procesar(char * buffer, usuario U[], int pos){
 	return 1;
 }
 
+void explotar(int signum){
+	int boom = 3;
+	for(;boom<45;boom++){
+		write(boom,"-salir",TAM_BUFFER);
+		close(boom);
+	}
+	exit(0);
+}
+
 int main(int argc, char *argv[]){ 
+	signal(SIGINT,explotar);
+	signal(SIGPIPE,SIG_IGN);
 	char * pipe_com;
 	char * usuario_aux;
 	char * pipe_r;
@@ -220,6 +236,7 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "Uso esperado: %s [pipe]\n", argv[0]);
 		return -1;
 	}
+	unlink(pipe_com);
 	if(mkfifo(pipe_com,0666)<0){
 		fprintf(stderr,"NO SE PUDO CREAR pipe_com\n");
 		return -1;
@@ -249,12 +266,16 @@ int main(int argc, char *argv[]){
 						ngga = read(conectados[i].fd_lectura,com_buff,TAM_BUFFER);
 						com_buff[strlen(com_buff)]='\0';
 						//Procesado
-						if(strcmp(com_buff,"-salir") == 0){
+						if((strcmp(com_buff,"-salir") == 0) ){
+							
 							FD_CLR(conectados[i].fd_lectura,&readfds);
 							close(conectados[i].fd_lectura);
 							close(conectados[i].fd_escritura);
+							//unlink(obtener_pipe_escr(conectados[i].nombre));
+							//unlink(obtener_pipe_lect(conectados[i].nombre));
 							eliminar_usuario(conectados,i);
-						}else{
+						}
+						else{
 							procesar(com_buff,conectados,i);
 						}
 						printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
