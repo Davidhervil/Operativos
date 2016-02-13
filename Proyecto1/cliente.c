@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include "chat.h"
 #include <time.h>
-
+#include <signal.h>
 
 #define ALTO 5 // Alto de la ventana 2
 #define LINES_MIN 10 // Alto mínimo que debe tener el terminal
@@ -98,8 +98,17 @@ void end(int fdr,int fdw,char * pipe1, char *pipe2){
     	fprintf(stderr, "Error al eliminar pipe %s\n",pipe2);
     }
 }
+void salirbien(int signum){
+		write(3,"-salir\n",TAM);
+		close(3);
+		close(4);
+		endwin();
+		exit(0);		
+}
 
 int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
+	signal(SIGINT,salirbien);
+	signal(SIGPIPE,SIG_IGN);
 	int fd_w,fd_r,aux;									// Filedescriptors de los dos pipes que se crean.
 	size_t tmp_part=strlen("/tmp/");				
 	size_t nam_given_size;							// Tamanio del nombre proporcionado
@@ -259,6 +268,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		        		fprintf(stderr, "Error al escribir en %s\n",pwrite);
 		        	}
 		        	end(fd_r,fd_w,pwrite,pread);
+		        	endwin();
 		            break;
         		}
                 else{
@@ -296,6 +306,18 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 
 		}else if(comm_success){
 			leido = read(fd_r,com_buff,TAM);
+			if (strcmp(com_buff,"-salir") == 0){
+				wprintw(ventana1,"El servidor ha cerrado. El cliente se cerrara en 10 segundos");
+				wrefresh(ventana1);
+				close(fd_r);
+				close(fd_w);
+				unlink(pwrite);
+				unlink(pread);
+				unlink(pipe_com);
+				sleep(10);
+				endwin();
+				exit(0);
+			}
 			com_buff[strlen(com_buff)]='\0';
 			usuario_displ = obtener_usr_displ(com_buff);
 			wprintw(ventana1, concat(usuario_displ,": %s\n"), com_buff+strlen(usuario_displ)+1);
@@ -336,5 +358,3 @@ void limpiarVentana2() {
     wmove(ventana2, 1, 0);
     wrefresh(ventana2);
 }
-
-
