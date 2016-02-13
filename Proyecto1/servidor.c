@@ -128,7 +128,7 @@ int procesar(char * buffer, usuario U[], int pos){
 	char buffer_cpy[TAM_BUFFER],aux_buff[TAM_BUFFER];
 	char usr[20];
 	char * token;
-	int * _void;
+	char * _void;
 	int i=0,esta = 0;
 
 	memcpy(buffer_cpy,buffer,TAM_BUFFER);
@@ -147,8 +147,10 @@ int procesar(char * buffer, usuario U[], int pos){
 			write(U[pos].fd_escritura,"Servidor:Usuario no encontrado",TAM_BUFFER);
 		}
 	}else if(strcmp(command,"-estado") == 0){
-		printf("Se leyo comando estado");
-		sscanf(buffer,"-estado %256s", buffer_cpy);
+		printf("Se leyo comando estado\n");
+		_void = strtok(buffer," \n");
+		_void = strtok(NULL,"\n");
+		sprintf(buffer_cpy,"%s",_void);
 		printf("El estado leido es %s\n",buffer_cpy);
 		sprintf(U[pos].estado,"%s",buffer_cpy);
 		
