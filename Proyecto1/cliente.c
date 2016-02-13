@@ -116,7 +116,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 	char com_buff[TAM];
 	char buffer[TAM];
 	
-	int comm_success,fdread_aux,fdwrite_aux,leido;
+	int comm_success,fdread_aux,fdwrite_aux,leido,i=0,j=0;
 	fd_set readfds,writefds,comm,comm_cpy,readfds_cpy,writefds_cpy;
 	struct timeval tv;
 	tv.tv_sec = 1;
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 	FD_ZERO(&comm);
 	FD_ZERO(&readfds);
 	FD_ZERO(&writefds);
-
+	memset(buffer,0,sizeof(buffer));
 
 	if(argc==1){									// Si solo se proporciona un argumento, entonces el pipe y el usuario se toman por defecto
 		//Acciones por defecto
@@ -237,17 +237,56 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
     scrollok(ventana2, TRUE);
     limpiarVentana2(); // Dibujar la línea horizontal
 
-    while(1) {
-        wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
-        aux = write(fd_w,buffer,TAM);
-		//wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
+    nodelay(ventana2,TRUE);
 
-        if (strcmp(buffer, "-salir") == 0) {
-        	if(write(fd_w,buffer,TAM)<0){
-        		fprintf(stderr, "Error al escribir en%s\n",pwrite);
-        	}
-        	end(fd_r,fd_w,pwrite,pread);
-            break;
+    while(1) {
+        //wgetnstr(ventana2, buffer, TAM); // Leer una línea de la entrada
+        //aux = write(fd_w,buffer,TAM);
+		//wprintw(ventana1, concat(usuario," Escribiste al pipe %d: %d letras \n"), fd_w,strlen(buffer));
+        i = -1;
+        i = wgetch(ventana2);
+        if (i < 0){
+            ;
+        }else{
+            if(i == 13){
+                wclear(ventana2);
+                mvwhline(ventana2, 0, 0, 0, 20); // Dibujar la línea horizontal
+                wmove(ventana2, 1, 0);
+                j = 0;
+                wrefresh(ventana1);
+                if(strcmp(buffer, "-salir") == 0){
+		        	if(write(fd_w,buffer,TAM)<0){
+		        		fprintf(stderr, "Error al escribir en %s\n",pwrite);
+		        	}
+		        	end(fd_r,fd_w,pwrite,pread);
+		            break;
+        		}
+                else{
+                	wprintw(ventana1, "%s: %s\n",usuario,buffer);
+                    wrefresh(ventana1);
+                    write(fd_w,buffer,TAM);
+                    limpiarVentana2();
+                }
+                memset(buffer,0,sizeof(buffer));
+            }
+            else if ((i == 127) && j>0){
+                buffer[j-1] = 0;
+                j--;
+                wclear(ventana2);
+                mvwhline(ventana2, 0, 0, 0, 20); // Dibujar la línea horizontal
+                wmove(ventana2, 1, 0);
+                wprintw(ventana2,"%s",buffer);
+                wrefresh(ventana2);
+            }
+            else{
+                buffer[j] = (char)i;
+                j++;
+                wclear(ventana2);
+                mvwhline(ventana2, 0, 0, 0, 20); // Dibujar la línea horizontal
+                wmove(ventana2, 1, 0);
+                wprintw(ventana2,"%s",buffer);
+                wrefresh(ventana2);
+            }
         }
 
 		comm_cpy = comm;
@@ -260,6 +299,7 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 			com_buff[strlen(com_buff)]='\0';
 			usuario_displ = obtener_usr_displ(com_buff);
 			wprintw(ventana1, concat(usuario_displ,": %s\n"), com_buff+strlen(usuario_displ)+1);
+			wrefresh(ventana1);
 		}
 
         //Escribir al servidor
@@ -270,11 +310,11 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
         //}
 
         //Escribir a la pantalla lo que acaba de escribir.
-        wprintw(ventana1, concat(usuario,": %s\n"), buffer);
+        //wprintw(ventana1, concat(usuario,": %s\n"), buffer);
 
         //Refrescar la pantalla.
-        wrefresh(ventana1);
-        limpiarVentana2();
+        //wrefresh(ventana1);
+        //limpiarVentana2();
     }
 
     endwin(); // Restaurar la operación del terminal a modo normal
