@@ -122,7 +122,7 @@ int calcular_cheq(usuario conected[]){
 }
 int procesar(char * buffer, usuario U[], int pos){
 	char command[20];
-	char buffer_cpy[TAM_BUFFER];
+	char buffer_cpy[TAM_BUFFER],aux_buff[TAM_BUFFER];
 	char usr[20];
 	char * token;
 	int * _void;
@@ -131,7 +131,7 @@ int procesar(char * buffer, usuario U[], int pos){
 	memcpy(buffer_cpy,buffer,TAM_BUFFER);
 	token = strtok(buffer_cpy," ");
 	sscanf(token,"%s",command);
-	printf("commando %s\n",command);
+	//printf("commando %s\n",command);
 	if(strcmp(command,"-escribir") == 0){
 		sscanf(buffer,"-escribir %s", usr);
 		printf("usuario nurvo a escrbir %s\n", usr);
@@ -143,6 +143,28 @@ int procesar(char * buffer, usuario U[], int pos){
 		}else{
 			write(U[pos].fd_escritura,"Servidor:Usuario no encontrado",TAM_BUFFER);
 		}
+	}else if(strcmp(command,"-estado") == 0){
+		printf("Se leyo comando estado");
+		sscanf(buffer,"-estado %256s", buffer_cpy);
+		printf("El estado leido es %s\n",buffer_cpy);
+		sprintf(U[pos].estado,"%s",buffer_cpy);
+		
+		for(;i<MAX_USR;i++){
+				if(strcmp(U[i].nombre,U[pos].nombre_destino) == 0){
+					sprintf(buffer_cpy,"Servidor:%s cambio su estado a %s",U[pos].nombre,U[pos].estado);
+					write(U[i].fd_escritura,buffer_cpy,TAM_BUFFER);
+				}
+			}
+	}else if(strcmp(command,"-quien") == 0){
+		sprintf(buffer_cpy,"Servidor: Lista de conectados\n");
+		for(;i<MAX_USR;i++){
+			if(strcmp(U[i].nombre,"-?") != 0){
+				sprintf(aux_buff,"Nombre: %s Estado: %s\n",U[i].nombre,U[i].estado);
+				strcat(buffer_cpy,aux_buff);
+			}
+		}
+		write(U[pos].fd_escritura,buffer_cpy,TAM_BUFFER);
+
 	}else{
 		if(strcmp(U[pos].nombre_destino,"-?") != 0){
 			sprintf(buffer_cpy,"%s:%s",U[pos].nombre,buffer);
