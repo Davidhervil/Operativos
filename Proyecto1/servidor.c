@@ -6,9 +6,11 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <signal.h>
 
 #define TAM_BUFFER 2048
 #define MAX_USR 20
+char * pipe_com;
 
 typedef struct usuarios{
 	int fd_lectura;
@@ -23,6 +25,7 @@ void inicializar(usuario U[]){
 	for(;i<MAX_USR;i++){
 		U[i].fd_lectura = -1;
 		U[i].fd_escritura = -1;
+		sprintf(U[i].estado,"-?");
 		sprintf(U[i].nombre,"-?");
 		sprintf(U[i].nombre_destino,"-?");
 	}
@@ -90,6 +93,27 @@ int anhadir_usuario(usuario conjunto[], char * usr, int fdr, int fdw){
 	}
 }
 
+void eliminar_usuario(usuario U[], int pos){
+	int i=0;
+	char desc_msj[TAM_BUFFER];
+	unlink(obtener_pipe_escr(U[pos].nombre));
+	unlink(obtener_pipe_lect(U[pos].nombre));
+	for(;i<MAX_USR;i++){
+		if(strcmp(U[i].nombre,"-?") != 0){
+			sprintf(U[i].nombre_destino,"-?");
+			sprintf(desc_msj,"Servidor:El usuario %s se ha desconectado",U[pos].nombre);
+			if(write(U[i].fd_escritura,desc_msj,TAM_BUFFER)<0){
+				fprintf(stderr, "Error enviando mensaje de desconexion a %s\n",U[i].nombre);
+			}
+		}
+	}
+	U[pos].fd_lectura = -1;
+	U[pos].fd_escritura = -1;
+	sprintf(U[pos].estado,"-?");
+	sprintf(U[pos].nombre,"-?");
+	sprintf(U[pos].nombre_destino,"-?");
+}
+
 int calcular_cheq(usuario conected[]){
 	int max = -1;
 	int i = 0;
@@ -100,13 +124,90 @@ int calcular_cheq(usuario conected[]){
 	}
 	return max;
 }
+int procesar(char * buffer, usuario U[], int pos){
+	char command[20];
+	char buffer_cpy[TAM_BUFFER],aux_buff[TAM_BUFFER];
+	char usr[20];
+	char * token;
+	char * _void;
+	int i=0,esta = 0;
+
+	memcpy(buffer_cpy,buffer,TAM_BUFFER);
+	token = strtok(buffer_cpy," ");
+	sscanf(token,"%s",command);
+	//printf("commando %s\n",command);
+	if(strcmp(command,"-escribir") == 0){
+		sscanf(buffer,"-escribir %s", usr);
+		printf("usuario nurvo a escrbir %s\n", usr);
+		for(;i<MAX_USR;i++){
+			esta |= (strcmp(U[i].nombre,usr) == 0);
+		}
+		if(esta){
+			sprintf(U[pos].nombre_destino,"%s",usr);
+		}else{
+			write(U[pos].fd_escritura,"Servidor:Usuario no encontrado",TAM_BUFFER);
+		}
+	}else if(strcmp(command,"-estoy") == 0){
+		printf("Se leyo comando estoy\n");
+		_void = strtok(buffer," \n");
+		_void = strtok(NULL,"\n");
+		sprintf(buffer_cpy,"%s",_void);
+		printf("El estado leido es %s\n",buffer_cpy);
+		sprintf(U[pos].estado,"%s",buffer_cpy);
+		
+		for(;i<MAX_USR;i++){
+				if(strcmp(U[i].nombre_destino,U[pos].nombre) == 0){
+					sprintf(buffer_cpy,"Servidor:%s cambio su estado a %s",U[pos].nombre,U[pos].estado);
+					write(U[i].fd_escritura,buffer_cpy,TAM_BUFFER);
+				}
+			}
+	}else if(strcmp(command,"-quien") == 0){
+		sprintf(buffer_cpy,"Servidor: Lista de conectados\n");
+		for(;i<MAX_USR;i++){
+			if(strcmp(U[i].nombre,"-?") != 0){
+				sprintf(aux_buff,"Nombre: %s Estado: %s\n",U[i].nombre,U[i].estado);
+				strcat(buffer_cpy,aux_buff);
+			}
+		}
+		write(U[pos].fd_escritura,buffer_cpy,TAM_BUFFER);
+
+	}
+	
+	else{
+		if(strcmp(U[pos].nombre_destino,"-?") != 0){
+			sprintf(buffer_cpy,"%s:%s",U[pos].nombre,buffer);
+			for(;i<MAX_USR;i++){
+				if(strcmp(U[i].nombre,U[pos].nombre_destino) == 0){
+					break;
+				}
+			}
+			write(U[i].fd_escritura,buffer_cpy,TAM_BUFFER);
+		}else{
+			write(U[pos].fd_escritura,"Servidor:Usuario no asignado",TAM_BUFFER);
+		}
+
+	}
+	return 1;
+}
+
+void explotar(int signum){
+	int boom = 3;
+	for(;boom<45;boom++){
+		unlink(pipe_com);
+		write(boom,"-salir",TAM_BUFFER);
+		close(boom);
+	}
+	exit(0);
+}
 
 int main(int argc, char *argv[]){ 
-	char * pipe_com;
+	signal(SIGINT,explotar);
+	signal(SIGPIPE,SIG_IGN);
 	char * usuario_aux;
 	char * pipe_r;
 	char * pipe_w;
 	char com_buff[TAM_BUFFER];
+	char conn_msj[TAM_BUFFER];
 
 	usuario conectados[MAX_USR];
 
@@ -138,6 +239,7 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "Uso esperado: %s [pipe]\n", argv[0]);
 		return -1;
 	}
+	unlink(pipe_com);
 	if(mkfifo(pipe_com,0666)<0){
 		fprintf(stderr,"NO SE PUDO CREAR pipe_com\n");
 		return -1;
@@ -165,11 +267,23 @@ int main(int argc, char *argv[]){
 				for(; i<MAX_USR;i++){
 					if(FD_ISSET(conectados[i].fd_lectura,&readfds_cpy)){
 						ngga = read(conectados[i].fd_lectura,com_buff,TAM_BUFFER);
-						com_buff[strlen(com_buff)]='\0';
-						//if(procesar(com_buff,conectados,i)){
-
-						//}
-						printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
+						if(ngga>0 && strlen(com_buff)!=0){
+							com_buff[strlen(com_buff)]='\0';
+							//Procesado
+							if((strcmp(com_buff,"-salir") == 0) ){
+								
+								FD_CLR(conectados[i].fd_lectura,&readfds);
+								close(conectados[i].fd_lectura);
+								close(conectados[i].fd_escritura);
+								//unlink(obtener_pipe_escr(conectados[i].nombre));
+								//unlink(obtener_pipe_lect(conectados[i].nombre));
+								eliminar_usuario(conectados,i);
+							}
+							else{
+								procesar(com_buff,conectados,i);
+							}
+							printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
+						}
 					}
 				}
 			}
@@ -204,6 +318,12 @@ int main(int argc, char *argv[]){
 				close(fdwrite_aux);
 				close(fdread_aux);
 			}else{
+				for(ngga=0;ngga<MAX_USR;ngga++){
+					if(conectados[ngga].fd_escritura!=-1){
+						sprintf(conn_msj,"Servidor:%s se ha conectado.",usuario_aux);
+						write(conectados[ngga].fd_escritura,conn_msj,TAM_BUFFER);
+					}
+				}
 				write(fdwrite_aux,"Servidor:Comandos disponibles\n -escribir <usuario>\n -estoy <estado>\n -salir",TAM_BUFFER);
 				FD_SET(fdread_aux,&readfds);
 			}
