@@ -23,6 +23,13 @@ WINDOW *ventana1, *ventana2;
 /* Mueve el cursor al punto de inserción actual de la ventana 2. */
 // Funcion para concatenar.
 char* concat(char *s1, char *s2){
+	/*	Esta funcion ocncatena dos strings y retorna n apuntador a caracteres con la concatenacion
+		
+		VARIABLES:
+			result 	: apuntador a caracteres a retornar con la concatenaicon
+			s1 		: primer string a concatenar
+			s2 		: segundo string a concatenar
+	*/
 	char *result;
     result = (char*)malloc(strlen(s1)+strlen(s2)+1);
     strcpy(result, s1);
@@ -32,6 +39,14 @@ char* concat(char *s1, char *s2){
 
 //Crear pipe de wscritura.
 char* crearPipe_w(char* usuario){
+	/*	Esta funcion recibe un apuntador a caracteres con el nombre de usuario asociado al cliente
+		y contsruye el pipe de escritura y retorna un apuntador a caracteres con el path del pipe
+			
+		VARIABLES:
+			usuario 	: nombre del usuario
+			dir_w 		: constante auxiliar para la primera parte del path del pipe
+			escritura 	: apuntador a retornar con el path del pipe de escritura
+	*/
 	char* dir_w = "/tmp/w_";
     char* escritura = concat(dir_w,usuario);
     if(unlink(escritura)>=0){
@@ -45,7 +60,14 @@ char* crearPipe_w(char* usuario){
 
 //Crear pipe de lectura.
 char* crearPipe_r(char* usuario){
-
+	/*	Esta funcion recibe un apuntador a caracteres con el nombre de usuario asociado al cliente
+		y contsruye el pipe de lectura y retorna un apuntador a caracteres con el path del pipe
+			
+		VARIABLES:
+			usuario 	: nombre del usuario
+			dir_r 		: constante auxiliar para la primera parte del path del pipe
+			lectura 	: apuntador a retornar con el path del pipe de lectura
+	*/
 	char* dir_l = "/tmp/r_";
 	char* lectura = concat(dir_l,usuario);
 	if(unlink(lectura)>=0){
@@ -59,6 +81,14 @@ char* crearPipe_r(char* usuario){
 
 //Conectarse al servidor (Enviar nombre del usuario por el pipe com)
 int conectarServidor(char * usuario,char * pipe_serv){
+	/*	Esta funcion recibe el nombre de usuario asoaciado al cliente, y el pipe de comunicacion indicado
+		al llamar al cliente, en caso de no ser indicado sera el pipe establecido por defecto. 
+	
+		VARIABLES:
+			usuario 	: nombre del usuario
+			pipe_serv 	: nombre del pipe del servidor
+			fd 			: descriptor de archivo de la llamada open del pipe del servidor
+	*/
 	int fd;
 	if((fd = open(pipe_serv, O_WRONLY |O_NONBLOCK))<0){
 		fprintf(stderr, "Error al abrir pipe de comunicacion.\n");
@@ -73,6 +103,15 @@ int conectarServidor(char * usuario,char * pipe_serv){
 }
 
 char * obtener_usr_displ(char * bffr){
+	/*	Esta funcion recibe un mensaje recibido por el servidor (el buffer leido). Extrae el usuario que
+	 	envio el mensaje del buffer previamente leido. Esto se hace de acuerdo al formato escogido que tienen
+	 	los mensajes enviados desde el servidor al los clientes
+	
+		VARIABLES:
+			bffr 	: buffer del mensaje previamente leido
+			usr 	: apuntador que contendra el nombre a retornar del emisor del mensaje
+			i 		: variable auxiliar para indexar
+	*/
 	char *usr;
 	int i=0;
 	while(bffr[i]!=':'){
@@ -85,6 +124,15 @@ char * obtener_usr_displ(char * bffr){
 }
 
 void end(int fdr,int fdw,char * pipe1, char *pipe2){
+	/* 	Funcion que recibe los pipes de escribtura y lectura del servidor asi como sus descriptores 
+		de archivo para cerrarlos y hacer los unlinks correspondientes. 
+
+		VARIABLES:
+			fdr 	: descriptor del pipe de lectura
+			fdw 	: descriptor del pipe de escritra
+			pipe1 	: path del pipe de escritura
+			pipe2 	: path del pipe de lectura
+	*/
 	if(close(fdw)<0){
 		fprintf(stderr, "Error al cerrar pipe de escritura\n");
 	}
@@ -99,6 +147,11 @@ void end(int fdr,int fdw,char * pipe1, char *pipe2){
     }
 }
 void salirbien(int signum){
+	/*	Funcion manejadora de senhales. En particular el cliente maneja la senhal SIGINT e ignora SIGPIPE
+		
+		VARIABLE:
+			signum 	: senhal a manejar
+	*/
 		write(4,"-salir",TAM);
 		close(3);
 		close(4);
@@ -106,7 +159,7 @@ void salirbien(int signum){
 		exit(0);		
 }
 
-int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de argumentos que se pasan por terminal.
+int main(int argc, char *argv[]){					// argc se asigna solo, es el numero de argumentos que se pasan por terminal.
 	signal(SIGINT,salirbien);
 	signal(SIGPIPE,SIG_IGN);
 	int fd_w,fd_r,aux;									// Filedescriptors de los dos pipes que se crean.
@@ -203,28 +256,32 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 			}
 		}
 	}
+	// Creamos los pipes de escritura y lectura
 	printf("Se ha creado %s\n",pwrite = crearPipe_w(usuario));
 	printf("Se ha creado %s\n",pread = crearPipe_r(usuario));
+
+	//Abrimos el de lectura
 	if((fd_r = open(pread,O_RDONLY|O_NONBLOCK))<0){
 		fprintf(stderr,"No se abrio %s\n",pread);
 		return 1;
 	}	
+	//Nos conectamos con el servidor
 	if(conectarServidor(usuario,pipe_com)){
 	}else{
 		fprintf(stderr,"Error al conectarServidor\n");
 		return -1;
 	}
-	//Obtenemos la direccion de los pipes
 
-	// los abrimos y los metemos en cada file descriptor
+	//Abrimos el pipe de escritura
 
 	if((fd_w = open(pwrite, O_WRONLY))<0){
 		fprintf(stderr,"No se abrio %s\n",pwrite);
 		return 1;
 	}
+
 	FD_SET(fd_r,&comm);
 
-
+	//							INTERFAZ	
 	/////////////////////////////////////////////////////////////////////
 	    
 	    initscr(); // Inicializar la biblioteca ncurses
@@ -278,7 +335,6 @@ int main(int argc, char *argv[]){					// argc lo asigna solo, es el numero de ar
 		            break;
         		}
                 else{
-                	
                 	if(strlen(buffer)!=0 && !espacio){
 	                	wprintw(ventana1, "%s: %s\n",usuario,buffer);
 	                    wrefresh(ventana1);

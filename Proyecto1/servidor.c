@@ -151,10 +151,13 @@ int procesar(char * buffer, usuario U[], int pos){
 		printf("Se leyo comando estoy\n");
 		_void = strtok(buffer," \n");
 		_void = strtok(NULL,"\n");
-		sprintf(buffer_cpy,"%s",_void);
-		printf("El estado leido es %s\n",buffer_cpy);
-		sprintf(U[pos].estado,"%s",buffer_cpy);
-		
+		if(_void!=NULL){
+			sprintf(buffer_cpy,"%s",_void);
+			printf("El estado leido es %s\n",buffer_cpy);
+			sprintf(U[pos].estado,"%s",buffer_cpy);
+		}else{
+			write(U[pos].fd_escritura,"Servidor:Operacion invalida",TAM_BUFFER);
+		}
 		for(;i<MAX_USR;i++){
 				if(strcmp(U[i].nombre_destino,U[pos].nombre) == 0){
 					sprintf(buffer_cpy,"Servidor:%s cambio su estado a %s",U[pos].nombre,U[pos].estado);
