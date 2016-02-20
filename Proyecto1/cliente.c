@@ -314,20 +314,20 @@ int main(int argc, char *argv[]){					// argc se asigna solo, es el numero de ar
         if (i < 0){
             ;
         }else{
-            if(i == 13 && !booleano){
+            if(i == 13 && !booleano){ //Se presiono la tecla ENTER
                 wclear(ventana2);
                 mvwhline(ventana2, 0, 0, 0, 20); // Dibujar la línea horizontal
                 wmove(ventana2, 1, 0);
-                for(espacio=0;espacio<j;espacio++){
-                	if(buffer[espacio]!=' '){
+                for(espacio=0;espacio<j;espacio++){ 	//Ciclo que verifica si el mensaje contiene solo espacios en blanco
+                	if(buffer[espacio]!=' '){	//de ser asi no se enviara mensajes en blanco
                 		espacio=0;
                			break;
                		}
                 }
                 j = 0;
                 wrefresh(ventana1);
-                if(strcmp(buffer, "-salir") == 0){
-		        	if(write(fd_w,buffer,TAM)<0){
+                if(strcmp(buffer, "-salir") == 0){		//Si se escribio "-salir" entonces se envia al servidor el mensaje y se toman
+		        	if(write(fd_w,buffer,TAM)<0){	//las medidas pertinentes
 		        		fprintf(stderr, "Error al escribir en %s\n",pwrite);
 		        	}
 		        	end(fd_r,fd_w,pwrite,pread);
@@ -335,7 +335,7 @@ int main(int argc, char *argv[]){					// argc se asigna solo, es el numero de ar
 		            break;
         		}
                 else{
-                	if(strlen(buffer)!=0 && !espacio){
+                	if(strlen(buffer)!=0 && !espacio){	//Si esta en blanco o vacio el mensaje no se envia
 	                	wprintw(ventana1, "%s: %s\n",usuario,buffer);
 	                    wrefresh(ventana1);
 	                    write(fd_w,buffer,TAM);
@@ -344,7 +344,7 @@ int main(int argc, char *argv[]){					// argc se asigna solo, es el numero de ar
                 }
                 memset(buffer,0,sizeof(buffer));
             }
-            else if ((i == 127) && j>0 && !booleano){
+            else if ((i == 127) && j>0 && !booleano)	 //Borrar
                 buffer[j-1] = 0;
                 j--;
                 wclear(ventana2);
@@ -352,19 +352,19 @@ int main(int argc, char *argv[]){					// argc se asigna solo, es el numero de ar
                 wmove(ventana2, 1, 0);
                 wprintw(ventana2,"%s",buffer);
                 wrefresh(ventana2);
-            }else if(i == 27){
+            }else if(i == 27){			//Si se presiona alguna de las flechas
             	booleano = 2;
             }
             else{
-            	if(booleano > 0){
+            	if(booleano > 0){		//No mostramos los caracteres de las flechas
             		booleano--;
             		wclear(ventana2);
 		            mvwhline(ventana2, 0, 0, 0, 20); // Dibujar la línea horizontal
 		            wmove(ventana2, 1, 0);
 		            wprintw(ventana2,"%s",buffer);
 		            wrefresh(ventana2);
-            	}else{
-
+            	}else{				
+						//Actualizamos el buffer con el caracter introducido
 		            buffer[j] = (char)i;
 		            j++;
 		            wclear(ventana2);
@@ -375,7 +375,7 @@ int main(int argc, char *argv[]){					// argc se asigna solo, es el numero de ar
             	}
             }
         }
-
+		//Select que indica si se recibe algo del servidor
 		comm_cpy = comm;
 		comm_success = select(fd_r+1,&comm_cpy,NULL,NULL, &tv);
 		if(comm_success == -1){
@@ -406,20 +406,6 @@ int main(int argc, char *argv[]){					// argc se asigna solo, es el numero de ar
 				break;
 			}
 		}
-
-        //Escribir al servidor
-
-        //if(strlen(buffer)>0){
-
-
-        //}
-
-        //Escribir a la pantalla lo que acaba de escribir.
-        //wprintw(ventana1, concat(usuario,": %s\n"), buffer);
-
-        //Refrescar la pantalla.
-        //wrefresh(ventana1);
-        //limpiarVentana2();
     }
 
     endwin(); // Restaurar la operación del terminal a modo normal
