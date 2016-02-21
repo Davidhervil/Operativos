@@ -1,209 +1,28 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string.h>
-#include <signal.h>
-
-#define TAM_BUFFER 2048
-#define MAX_USR 20
-char * pipe_com;
-
-typedef struct usuarios{
-	int fd_lectura;
-	int fd_escritura;
-	char nombre[20];
-	char estado[1024];
-	char nombre_destino[20];
-}usuario;
-
-void inicializar(usuario U[]){
-	int i=0;
-	for(;i<MAX_USR;i++){
-		U[i].fd_lectura = -1;
-		U[i].fd_escritura = -1;
-		sprintf(U[i].estado,"-?");
-		sprintf(U[i].nombre,"-?");
-		sprintf(U[i].nombre_destino,"-?");
-	}
-}
-char * obtener_usuario(char * buffer){
-	/*	Esta funcion guarda en la variable usuario el nombre del usuario recibido en el buffer
-		por el pipe de comunicacion
-	*/
-	char * usuario;
-	usuario = (char*)malloc(strlen(buffer)+1);
-	memcpy(usuario,buffer,strlen(buffer)+1);
-	usuario[strlen(usuario)]='\0';
-	return usuario;
-}
-
-char * obtener_pipe_lect(char * usr){
-	/*	Esta funcion devuelve un arreglo de caracteres con el pipe de lectura para el servidor
-		dado un nombre de usuario.
-		Recordar que el pipe de lectura del servidor es el de escritura del cliente. Es por
-		eso que tmp_r es "/tmp/w_"
-	*/
-	char * piper;
-	char * tmp_r = "/tmp/w_";
-	size_t tmp_r_part = strlen("/tmp/w_");
-	piper = (char *)malloc(tmp_r_part+strlen(usr)+1);
-	memcpy(piper,tmp_r,tmp_r_part);
-	memcpy(piper + tmp_r_part,usr,strlen(usr) + 1);
-	piper[tmp_r_part+strlen(usr)]='\0';
-	return piper;
-}
-
-char * obtener_pipe_escr(char * usr){
-	/*	Esta funcion devuelve un arreglo de caracteres con el pipe de escritura para el servidor
-		dado un nombre de usuario.
-		Recordar que el pipe de escritura del servidor es el de lectura del cliente. Es por
-		eso que tmp_w es "/tmp/r_"
-	*/
-	char * pipew;
-	char * tmp_w = "/tmp/r_";
-	size_t tmp_w_part = strlen("/tmp/r_");
-	pipew = (char *)malloc(tmp_w_part+strlen(usr)+1);
-	memcpy(pipew,tmp_w,tmp_w_part);
-	memcpy(pipew + tmp_w_part,usr,strlen(usr) + 1);
-	pipew[tmp_w_part+strlen(usr)]='\0';
-	return pipew;
-}
-
-int anhadir_usuario(usuario conjunto[], char * usr, int fdr, int fdw){
-	/*	Esta funcion anhade a un usuario en el arreglo de usuarios y anhade los descriptores de
-		sus pipes asociaos a los arreglos fdsr y fdsw. La posicion del usuario
-		corresponde con las posiciones de sus descriptores asociados.
-	*/
-	int i=0;
-	while(conjunto[i].fd_lectura!=-1){
-		i++;
-	}
-	if(i == MAX_USR){
-		return 0;
-	}else{
-		conjunto[i].fd_lectura = fdr;
-		conjunto[i].fd_escritura = fdw;
-		sprintf(conjunto[i].nombre,"%s", usr);
-		sprintf(conjunto[i].nombre_destino,"-?");
-		return 1;
-	}
-}
-
-void eliminar_usuario(usuario U[], int pos){
-	int i=0;
-	char desc_msj[TAM_BUFFER];
-	unlink(obtener_pipe_escr(U[pos].nombre));
-	unlink(obtener_pipe_lect(U[pos].nombre));
-	for(;i<MAX_USR;i++){
-		if(strcmp(U[i].nombre,"-?") != 0){
-			sprintf(U[i].nombre_destino,"-?");
-			sprintf(desc_msj,"Servidor:El usuario %s se ha desconectado",U[pos].nombre);
-			if(write(U[i].fd_escritura,desc_msj,TAM_BUFFER)<0){
-				fprintf(stderr, "Error enviando mensaje de desconexion a %s\n",U[i].nombre);
-			}
-		}
-	}
-	U[pos].fd_lectura = -1;
-	U[pos].fd_escritura = -1;
-	sprintf(U[pos].estado,"-?");
-	sprintf(U[pos].nombre,"-?");
-	sprintf(U[pos].nombre_destino,"-?");
-}
-
-int calcular_cheq(usuario conected[]){
-	int max = -1;
-	int i = 0;
-	for(;i<MAX_USR;i++){
-		if(conected[i].fd_lectura > max){
-			max = conected[i].fd_lectura;
-		}
-	}
-	return max;
-}
-int procesar(char * buffer, usuario U[], int pos){
-	char command[20];
-	char buffer_cpy[TAM_BUFFER],aux_buff[TAM_BUFFER];
-	char usr[20];
-	char * token;
-	char * _void;
-	int i=0,esta = 0;
-
-	memcpy(buffer_cpy,buffer,TAM_BUFFER);
-	token = strtok(buffer_cpy," ");
-	sscanf(token,"%s",command);
-	//printf("commando %s\n",command);
-	if(strcmp(command,"-escribir") == 0){
-		sscanf(buffer,"-escribir %s", usr);
-		printf("usuario nurvo a escrbir %s\n", usr);
-		for(;i<MAX_USR;i++){
-			esta |= (strcmp(U[i].nombre,usr) == 0);
-		}
-		if(esta){
-			sprintf(U[pos].nombre_destino,"%s",usr);
-		}else{
-			write(U[pos].fd_escritura,"Servidor:Usuario no encontrado",TAM_BUFFER);
-		}
-	}else if(strcmp(command,"-estoy") == 0){
-		printf("Se leyo comando estoy\n");
-		_void = strtok(buffer," \n");
-		_void = strtok(NULL,"\n");
-		if(_void!=NULL){
-			sprintf(buffer_cpy,"%s",_void);
-			printf("El estado leido es %s\n",buffer_cpy);
-			sprintf(U[pos].estado,"%s",buffer_cpy);
-		}else{
-			write(U[pos].fd_escritura,"Servidor:Operacion invalida",TAM_BUFFER);
-		}
-		for(;i<MAX_USR;i++){
-				if(strcmp(U[i].nombre_destino,U[pos].nombre) == 0){
-					sprintf(buffer_cpy,"Servidor:%s cambio su estado a %s",U[pos].nombre,U[pos].estado);
-					write(U[i].fd_escritura,buffer_cpy,TAM_BUFFER);
-				}
-			}
-	}else if(strcmp(command,"-quien") == 0){
-		sprintf(buffer_cpy,"Servidor: Lista de conectados\n");
-		for(;i<MAX_USR;i++){
-			if(strcmp(U[i].nombre,"-?") != 0){
-				sprintf(aux_buff,"Nombre: %s Estado: %s\n",U[i].nombre,U[i].estado);
-				strcat(buffer_cpy,aux_buff);
-			}
-		}
-		write(U[pos].fd_escritura,buffer_cpy,TAM_BUFFER);
-
-	}
-	
-	else{
-		if(strcmp(U[pos].nombre_destino,"-?") != 0){
-			sprintf(buffer_cpy,"%s:%s",U[pos].nombre,buffer);
-			for(;i<MAX_USR;i++){
-				if(strcmp(U[i].nombre,U[pos].nombre_destino) == 0){
-					break;
-				}
-			}
-			write(U[i].fd_escritura,buffer_cpy,TAM_BUFFER);
-		}else{
-			write(U[pos].fd_escritura,"Servidor:Usuario no asignado",TAM_BUFFER);
-		}
-
-	}
-	return 1;
-}
-
-void explotar(int signum){
-	int boom = 3;
-	for(;boom<45;boom++){
-		unlink(pipe_com);
-		write(boom,"-salir",TAM_BUFFER);
-		close(boom);
-	}
-	exit(0);
-}
+#include "servidorFunc.h"
 
 int main(int argc, char *argv[]){ 
+	/*	Funcion principal del servidor. Crea su pipe de comunicacion, cierra cualquier pipe que pueda llamarse igual
+		para evitar errores antes de abrirlo.
+
+		VARIABLES:
+			usuario_aux 	: variable para almacenar temporalmente el nombre de un usuario que solicita conexion	
+			pipe_r 			: variable para almacenar temporalmente el nombre del pipe de lectura del servidor hacia el cliente
+			pipe_w			: variable para almacenar temporalmente el nombre del pipe de escritura del servidor hacia el cliente
+			com_buff 		: buffer de comunicacion
+			conn_msj 		: mensaje de conexion a enviar a todos los usuarios cuando entra uno nuevo
+			conectados 		: arreglo de usuarios ocnectados
+			dafuq 			: numero de bytes leidos en el pipe de comunicacion
+			ngga 			: numero de pipes leidos en los pipe de lectura cliente-servidor
+			com_fd 			: descriptor del pipe de comunicacion
+			comm_success 	: resultado de hacer select del pipe de comunicacion
+			fdread_aux 		: variable auxiliar para almacenar temporalmente el descriptor de lectura de un usuario nuevo
+			fdwrite_aux 	: variable auxiliar para almacenar temporalmente el descriptor de escritura de un usuario nuevo
+			cheq 			: maximo descriptor en el set del select de los pipes cliente-servidor
+			disp 			: resultado de hacer select de los pipes cliente-servidor
+			tmp_part 		: variable auxiliar para guardar el tamanho del path /tmp/ del pipe de comunicacion
+			nam_given_size 	: tamanho del nombre del pipe introducido por el usuario
+			tv 				: estructura de tiempo para los select
+	*/
 	signal(SIGINT,explotar);
 	signal(SIGPIPE,SIG_IGN);
 	char * usuario_aux;
@@ -228,6 +47,7 @@ int main(int argc, char *argv[]){
 	FD_ZERO(&readfds);
 	inicializar(conectados);
 
+	//Escogencia del nombre del pipe de comunicacion
 	if(argc==1){
 		pipe_com = "/tmp/servidor1210761-1210796";
 
@@ -242,7 +62,9 @@ int main(int argc, char *argv[]){
 		fprintf(stderr, "Uso esperado: %s [pipe]\n", argv[0]);
 		return -1;
 	}
-	unlink(pipe_com);
+	if(unlink(pipe_com)<0){//Eliminamos un pipe que pueda no haber sido borrado por un servidor anterior
+		fprintf(stderr, "Error eliminando pipe residual %s\n",pipe_com);
+	}
 	if(mkfifo(pipe_com,0666)<0){
 		fprintf(stderr,"NO SE PUDO CREAR pipe_com\n");
 		return -1;
@@ -257,7 +79,7 @@ int main(int argc, char *argv[]){
 	printf("Se abrio el pipe: %s y su descriptor es %d\n",pipe_com,com_fd);
 	
 	while(1){
-		//SELECT
+		//SELECT de lectura de los clientes
 		readfds_cpy = readfds;
 		cheq = calcular_cheq(conectados);
 		if(cheq != -1){
@@ -265,7 +87,6 @@ int main(int argc, char *argv[]){
 			if(disp == -1){
 				perror("Error de seleccion de pipes dobles");	
 			}else if(disp){
-				//printf("A LEER MMGVO\n");
 				int i = 0;
 				for(; i<MAX_USR;i++){
 					if(FD_ISSET(conectados[i].fd_lectura,&readfds_cpy)){
@@ -285,7 +106,7 @@ int main(int argc, char *argv[]){
 							else{
 								procesar(com_buff,conectados,i);
 							}
-							printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
+							//printf("Mensaje de %s : %s\n",conectados[i].nombre,com_buff);
 						}
 					}
 				}
@@ -301,45 +122,45 @@ int main(int argc, char *argv[]){
 		}else if(comm_success){
 			dafuq = read(com_fd,com_buff,TAM_BUFFER);
 			com_buff[dafuq]='\0';
-			if(dafuq!=0)printf("Solicitud de conexion: %s\n",com_buff);
-			printf("Obteniendo usuario\n");
-			usuario_aux = obtener_usuario(com_buff);
-			printf("Usuario obtenido\n");
-			pipe_r = obtener_pipe_lect(usuario_aux);
-			pipe_w = obtener_pipe_escr(usuario_aux);
-			if((fdwrite_aux = open(pipe_w,O_WRONLY | O_NONBLOCK))<0){
-				fprintf(stderr, "Error al abrir pipe de escritura al usuario %s\n",usuario_aux);
-				return -1;
-			}
-			if((fdread_aux = open(pipe_r, O_RDONLY|O_NONBLOCK))<0){
-				fprintf(stderr, "Error al abrir pipe de lectura del usuario %s\n",usuario_aux);
-				return -1;
-			}
-			printf("Pipes del usuario %s: %s desc %d %s desc %d\n",usuario_aux,pipe_w,fdwrite_aux,pipe_r,fdread_aux);
-			if(!anhadir_usuario(conectados,usuario_aux,fdread_aux,fdwrite_aux)){
-				write(fdwrite_aux,"Servidor lleno",strlen("Servidor lleno")+1);
-				close(fdwrite_aux);
-				close(fdread_aux);
-			}else{
-				for(ngga=0;ngga<MAX_USR;ngga++){
-					if(conectados[ngga].fd_escritura!=-1){
-						sprintf(conn_msj,"Servidor:%s se ha conectado.",usuario_aux);
-						write(conectados[ngga].fd_escritura,conn_msj,TAM_BUFFER);
-					}
+			if(dafuq!=0){
+				printf("Solicitud de conexion: %s\n",com_buff);
+				printf("Obteniendo usuario\n");
+				usuario_aux = obtener_usuario(com_buff);
+				printf("Usuario obtenido\n");
+				pipe_r = obtener_pipe_lect(usuario_aux);
+				pipe_w = obtener_pipe_escr(usuario_aux);
+				if((fdwrite_aux = open(pipe_w,O_WRONLY | O_NONBLOCK))<0){
+					fprintf(stderr, "Error al abrir pipe de escritura al usuario %s\n",usuario_aux);
+					return -1;
 				}
-				write(fdwrite_aux,"Servidor:Comandos disponibles\n -escribir <usuario>\n -estoy <estado>\n -salir",TAM_BUFFER);
-				FD_SET(fdread_aux,&readfds);
+				if((fdread_aux = open(pipe_r, O_RDONLY|O_NONBLOCK))<0){
+					fprintf(stderr, "Error al abrir pipe de lectura del usuario %s\n",usuario_aux);
+					return -1;
+				}
+				printf("Pipes del usuario %s: %s desc %d %s desc %d\n",usuario_aux,pipe_w,fdwrite_aux,pipe_r,fdread_aux);
+				if(!esta(conectados,usuario_aux)){
+					if(!anhadir_usuario(conectados,usuario_aux,fdread_aux,fdwrite_aux)){
+						write(fdwrite_aux,"Servidor lleno",TAM_BUFFER);
+						close(fdwrite_aux);
+						close(fdread_aux);
+					}else{
+						for(ngga=0;ngga<MAX_USR;ngga++){
+							if(conectados[ngga].fd_escritura!=-1){
+								sprintf(conn_msj,"Servidor:%s se ha conectado.",usuario_aux);
+								write(conectados[ngga].fd_escritura,conn_msj,TAM_BUFFER);
+							}
+						}
+						write(fdwrite_aux,"Servidor:Comandos disponibles\n -escribir <usuario>\n -estoy <estado>\n -salir",TAM_BUFFER);
+						FD_SET(fdread_aux,&readfds);
+					}
+				}else{
+					printf("Usuario existente\n");
+					write(fdwrite_aux,"Nombre de usuario existente. Conexion Fallida",TAM_BUFFER);
+					close(fdwrite_aux);
+					close(fdread_aux);
+				}
 			}
 		}
 	}
-
-
-	/*int fd;
-	char * myfifo="/tmp/myfifio";
-	mkfifo(myfifo, 0666);
-	fd = open(myfifo, O_WRONLY);
-	write(fd, "HI",sizeof("HI"));
-	close(fd);
-	unlink(myfifo);*/
 	return 0;
 }
